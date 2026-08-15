@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="Abstractions\IClock.cs" />
     <Compile Include="Abstractions\IFamilyDocumentGateway.cs" />
+    <Compile Include="Abstractions\IFamilySnapshotProvider.cs" />
     <Compile Include="Abstractions\IHistoryRepository.cs" />
     <Compile Include="Abstractions\IVersionContentStore.cs" />
     <Compile Include="Diff\ChangeKind.cs" />

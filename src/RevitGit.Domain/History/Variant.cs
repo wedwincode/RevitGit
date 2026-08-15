@@ -33,6 +33,11 @@ namespace RevitGit.Domain.History
 
         public VersionId CurrentVersionId { get; private set; }
 
+        public static Variant Rehydrate(VariantId id, string name, VersionId currentVersionId)
+        {
+            return new Variant(id, name, currentVersionId);
+        }
+
         internal void MoveTo(VersionId versionId)
         {
             if (versionId == null)

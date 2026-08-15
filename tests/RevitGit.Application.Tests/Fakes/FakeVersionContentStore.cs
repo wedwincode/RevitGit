@@ -17,15 +17,18 @@ namespace RevitGit.Application.Tests.Fakes
 
         public bool StoreCalled { get; private set; }
 
+        public VersionId StoredVersionId { get; private set; }
+
         public VersionId RestoredVersionId { get; private set; }
 
         public Exception StoreException { get; set; }
 
         public Exception RestoreException { get; set; }
 
-        public void StoreCurrentVersion(FamilyIdentity familyIdentity)
+        public void StoreCurrentVersion(FamilyIdentity familyIdentity, VersionId versionId)
         {
             StoreCalled = true;
+            StoredVersionId = versionId;
             _operations?.Add("content-store");
             if (StoreException != null)
             {

@@ -2,6 +2,7 @@ using System;
 using RevitGit.Application.Abstractions;
 using RevitGit.Application.Exceptions;
 using RevitGit.Application.Models;
+using RevitGit.Domain.Identifiers;
 
 namespace RevitGit.Application.History
 {
@@ -28,6 +29,7 @@ namespace RevitGit.Application.History
         {
             var familyIdentity = _documentGateway.GetIdentity();
             var history = _historyRepository.LoadRequired(familyIdentity);
+            var versionId = VersionId.New();
 
             try
             {
@@ -43,7 +45,7 @@ namespace RevitGit.Application.History
 
             try
             {
-                _contentStore.StoreCurrentVersion(familyIdentity);
+                _contentStore.StoreCurrentVersion(familyIdentity, versionId);
             }
             catch (Exception exception)
             {
@@ -53,7 +55,7 @@ namespace RevitGit.Application.History
                     exception);
             }
 
-            var version = history.AddVersion(_clock.UtcNow, comment);
+            var version = history.AddVersion(versionId, _clock.UtcNow, comment);
             _historyRepository.SaveUpdated(familyIdentity, history);
 
             return new VersionSummary(

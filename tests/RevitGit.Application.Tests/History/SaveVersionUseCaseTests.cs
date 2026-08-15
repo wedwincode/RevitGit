@@ -24,6 +24,7 @@ namespace RevitGit.Application.Tests.History
 
             Assert.True(fixture.Document.SaveCalled);
             Assert.True(fixture.ContentStore.StoreCalled);
+            Assert.Equal(created.Id, fixture.ContentStore.StoredVersionId);
             Assert.Equal("Changed width", created.Comment);
             Assert.Equal(created.Id, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
             Assert.Equal(1, fixture.Repository.SaveCount);

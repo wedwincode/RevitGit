@@ -335,13 +335,15 @@ The following decisions are fixed for the first implementation unless explicitly
 12. UI may be Russian-only in v1. Localization infrastructure is not a release requirement.
 13. History is portable only when the `.rfa` and its adjacent `.familyhistory` data are moved/copied together.
 14. No telemetry, cloud sync, remote repositories, or runtime network dependency.
+15. Each `.rfa` family has one independent logical history repository. Multiple
+    repositories may share the adjacent technical `.familyhistory` root, but never
+    share history state.
 
 ## 13. Open product decisions
 
-1. **Repository scope:** one repository per family, or one repository for a folder/library containing multiple families? Do not lock this decision until the storage spike.
-2. **Variant naming:** what default name should be proposed when a new variant is created, and may the user choose it immediately?
-3. **Nested families:** are nested-family changes required for the first usable release or may they follow parameters/types/formulas?
-4. **Installer format:** prefer the simplest offline installation. Decide between a lightweight per-user Revit add-in installer/manual package and MSI after the first end-to-end build. Admin-free installation is desirable but not mandatory.
-5. **Revit 2021 builds:** which exact Revit 2021 update/patch levels must be supported?
-6. **History repair:** is a diagnostics/repair command needed for the first release, or only later?
-7. **Comparison export:** is exporting a comparison report needed later?
+1. **Variant naming:** what default name should be proposed when a new variant is created, and may the user choose it immediately?
+2. **Nested families:** are nested-family changes required for the first usable release or may they follow parameters/types/formulas?
+3. **Installer format:** prefer the simplest offline installation. Decide between a lightweight per-user Revit add-in package and MSI after the first end-to-end build. Admin-free installation is desirable but not mandatory.
+4. **Revit 2021 builds:** which exact Revit 2021 update/patch levels must be supported?
+5. **History repair:** is a diagnostics/repair command needed for the first release, or only later?
+6. **Comparison export:** is exporting a comparison report needed later?

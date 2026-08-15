@@ -4,13 +4,12 @@ Most initial product decisions are now fixed in `project.md`. Keep this file sho
 
 ## Open
 
-1. **Repository scope** — one history repository per `.rfa`, or one repository for a whole folder/library of families? Deliberately undecided until the storage spike.
-2. **Variant naming** — what default name is proposed when creating a new variant? Is entering a custom name part of the creation dialog?
-3. **Nested families** — mandatory in the first usable semantic diff, or phase immediately after parameters/formulas/types/type values?
-4. **Installer format** — lightweight per-user/manual Revit add-in package or MSI? Prefer the simplest offline installation; admin-free is desirable but not mandatory.
-5. **Supported Revit 2021 patch levels** — all 2021 updates or a known deployed build set?
-6. **Repair/diagnostics** — required in v1 or deferred?
-7. **Comparison export** — required later or unnecessary?
+1. **Variant naming** — what default name is proposed when creating a new variant? Is entering a custom name part of the creation dialog?
+2. **Nested families** — mandatory in the first usable semantic diff, or phase immediately after parameters/formulas/types/type values?
+3. **Installer format** — lightweight per-user/manual Revit add-in package or MSI? Prefer the simplest offline installation; admin-free is desirable but not mandatory.
+4. **Supported Revit 2021 patch levels** — all 2021 updates or a known deployed build set?
+5. **Repair/diagnostics** — required in v1 or deferred?
+6. **Comparison export** — required later or unnecessary?
 
 ## Confirmed
 
@@ -29,3 +28,4 @@ Most initial product decisions are now fixed in `project.md`. Keep this file sho
 - Family history is moved/copied together with the adjacent history folder.
 - Author identity is not stored.
 - No telemetry/network/cloud behavior.
+- Repository scope is one independent logical repository per `.rfa` family.

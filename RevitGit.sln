@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Revit2021", "src\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.UI", "src\RevitGit.UI\RevitGit.UI.csproj", "{A1000000-0000-0000-0000-000000000015}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.FileSystem", "src\RevitGit.Infrastructure.FileSystem\RevitGit.Infrastructure.FileSystem.csproj", "{A1000000-0000-0000-0000-000000000016}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A1000000-0000-0000-0000-000000000002}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Domain.Tests", "tests\RevitGit.Domain.Tests\RevitGit.Domain.Tests.csproj", "{A1000000-0000-0000-0000-000000000021}"
@@ -22,6 +24,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Application.Tests", "tests\RevitGit.Application.Tests\RevitGit.Application.Tests.csproj", "{A1000000-0000-0000-0000-000000000022}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.Git.Tests", "tests\RevitGit.Infrastructure.Git.Tests\RevitGit.Infrastructure.Git.Tests.csproj", "{A1000000-0000-0000-0000-000000000023}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.FileSystem.Tests", "tests\RevitGit.Infrastructure.FileSystem.Tests\RevitGit.Infrastructure.FileSystem.Tests.csproj", "{A1000000-0000-0000-0000-000000000024}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -49,6 +53,10 @@ Global
 		{A1000000-0000-0000-0000-000000000015}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1000000-0000-0000-0000-000000000015}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000015}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000016}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000016}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000016}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000016}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000021}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A1000000-0000-0000-0000-000000000021}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1000000-0000-0000-0000-000000000021}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -61,6 +69,10 @@ Global
 		{A1000000-0000-0000-0000-000000000023}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1000000-0000-0000-0000-000000000023}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000023}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000024}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000024}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000024}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000024}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -71,8 +83,10 @@ Global
 		{A1000000-0000-0000-0000-000000000013} = {A1000000-0000-0000-0000-000000000001}
 		{A1000000-0000-0000-0000-000000000014} = {A1000000-0000-0000-0000-000000000001}
 		{A1000000-0000-0000-0000-000000000015} = {A1000000-0000-0000-0000-000000000001}
+		{A1000000-0000-0000-0000-000000000016} = {A1000000-0000-0000-0000-000000000001}
 		{A1000000-0000-0000-0000-000000000021} = {A1000000-0000-0000-0000-000000000002}
 		{A1000000-0000-0000-0000-000000000022} = {A1000000-0000-0000-0000-000000000002}
 		{A1000000-0000-0000-0000-000000000023} = {A1000000-0000-0000-0000-000000000002}
+		{A1000000-0000-0000-0000-000000000024} = {A1000000-0000-0000-0000-000000000002}
 	EndGlobalSection
 EndGlobal

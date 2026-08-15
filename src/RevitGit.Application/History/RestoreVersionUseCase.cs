@@ -30,6 +30,7 @@ namespace RevitGit.Application.History
             var familyIdentity = _documentGateway.GetIdentity();
             var history = _historyRepository.LoadRequired(familyIdentity);
             history.GetVersion(sourceVersionId);
+            var restoredVersionId = VersionId.New();
 
             try
             {
@@ -43,10 +44,26 @@ namespace RevitGit.Application.History
                     exception);
             }
 
+            try
+            {
+                _contentStore.StoreCurrentVersion(familyIdentity, restoredVersionId);
+            }
+            catch (Exception exception)
+            {
+                throw new ApplicationOperationException(
+                    ApplicationFailureStage.StoreVersionContent,
+                    "The restored version content could not be stored.",
+                    exception);
+            }
+
             var effectiveComment = string.IsNullOrWhiteSpace(comment)
                 ? "Restored from version " + sourceVersionId
                 : comment;
-            var version = history.AddRestoredVersion(sourceVersionId, _clock.UtcNow, effectiveComment);
+            var version = history.AddRestoredVersion(
+                restoredVersionId,
+                sourceVersionId,
+                _clock.UtcNow,
+                effectiveComment);
             _historyRepository.SaveUpdated(familyIdentity, history);
 
             return new VersionSummary(

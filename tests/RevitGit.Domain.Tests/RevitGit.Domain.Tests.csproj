@@ -13,6 +13,7 @@
     <Compile Include="BootstrapSmokeTest.cs" />
     <Compile Include="History\FamilyHistoryTests.cs" />
     <Compile Include="History\InvariantTests.cs" />
+    <Compile Include="History\RehydrationTests.cs" />
     <Compile Include="History\RestoreTests.cs" />
     <Compile Include="History\VariantTests.cs" />
     <Compile Include="Identifiers\IdentifierTests.cs" />

@@ -45,6 +45,16 @@ namespace RevitGit.Domain.History
 
         public VersionId RestoredFromVersionId { get; }
 
+        public static Version Rehydrate(
+            VersionId id,
+            VersionId parentVersionId,
+            DateTimeOffset createdAt,
+            string comment,
+            VersionId restoredFromVersionId)
+        {
+            return new Version(id, parentVersionId, createdAt, comment, restoredFromVersionId);
+        }
+
         private static string NormalizeComment(string comment)
         {
             return string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();

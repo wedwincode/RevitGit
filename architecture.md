@@ -26,7 +26,7 @@ src/
   FamilyHistory.Domain/
   FamilyHistory.Application/
   FamilyHistory.Infrastructure.Git/
-  FamilyHistory.Infrastructure.Storage/
+  RevitGit.Infrastructure.FileSystem/
   FamilyHistory.Revit2021/
   FamilyHistory.UI/
 
@@ -37,7 +37,7 @@ tests/
   FamilyHistory.Domain.Tests/
   FamilyHistory.Application.Tests/
   FamilyHistory.Infrastructure.Git.Tests/
-  FamilyHistory.Infrastructure.Storage.Tests/
+  RevitGit.Infrastructure.FileSystem.Tests/
   FamilyHistory.UI.Tests/
   FamilyHistory.Contract.Tests/
 
@@ -282,22 +282,40 @@ For MVP, commit/store complete `.rfa` states through the Git-backed history adap
 
 Repository growth must be measured with representative `.rfa` fixtures before any storage optimization is considered. Keep the storage behavior behind an interface so a later optimization does not affect Domain/Application semantics.
 
-## 11. Proposed on-disk layout
+## 11. Filesystem storage layout
 
 Required placement for v1:
 
 ```text
 Door.rfa
 .familyhistory/
-  repo/
-  state.json
-  logs/
-  temp/
+  index.json
+  repositories/
+    <repository-guid>/
+      repository.json
+      history.json
+      versions/
+        <version-guid>/
+          family.rfa
+          snapshot.json
+          version.json
 ```
 
-The `.familyhistory` root is hidden and lives beside the working family so history can be copied/moved with the family data. The exact internal layout may change after the repository-scope spike.
+The `.familyhistory` root is hidden and lives beside the working family. Each GUID
+directory is one independent logical repository for one `.rfa`; `index.json` maps a
+relative family filename to that repository ID. No absolute machine path is stored,
+so moving the family and `.familyhistory` together preserves identity.
 
-Whether one `.familyhistory` repository tracks one family or multiple `.rfa` files in the same folder remains an explicit open decision. Centralized `%LOCALAPPDATA%` history is not the v1 design.
+An external rename is reassociated automatically only when the adjacent index has a
+single unambiguous repository. With multiple repositories, automatic reassociation
+is deliberately deferred rather than guessing.
+
+Filesystem JSON uses infrastructure DTOs and the .NET Framework
+`DataContractJsonSerializer`; Domain models have no serialization attributes.
+Critical JSON writes use a same-directory `.tmp-<guid>` file, flush it to disk, and
+publish with replace/move. A version is built in a `.tmp-<guid>` directory and moved
+to its final VersionId directory only after the binary, snapshot, checksums, and
+metadata are complete. SHA-256 verifies `family.rfa` and `snapshot.json`.
 
 ## 12. Atomic version creation
 

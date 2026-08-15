@@ -1,0 +1,45 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A1000000-0000-0000-0000-000000000016}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>RevitGit.Infrastructure.FileSystem</RootNamespace>
+    <AssemblyName>RevitGit.Infrastructure.FileSystem</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' "><DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize><OutputPath>bin\Debug\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants></PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' "><DebugType>pdbonly</DebugType><Optimize>true</Optimize><OutputPath>bin\Release\</OutputPath><DefineConstants>TRACE</DefineConstants></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RevitGit.Application\RevitGit.Application.csproj"><Project>{A1000000-0000-0000-0000-000000000012}</Project><Name>RevitGit.Application</Name></ProjectReference>
+    <ProjectReference Include="..\RevitGit.Domain\RevitGit.Domain.csproj"><Project>{A1000000-0000-0000-0000-000000000011}</Project><Name>RevitGit.Domain</Name></ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Exceptions\RepositoryCorruptedException.cs" />
+    <Compile Include="Exceptions\RepositoryNotFoundException.cs" />
+    <Compile Include="Exceptions\StorageException.cs" />
+    <Compile Include="Exceptions\StorageConflictException.cs" />
+    <Compile Include="Integrity\ChecksumService.cs" />
+    <Compile Include="History\FileSystemHistoryRepository.cs" />
+    <Compile Include="IO\AtomicFileWriter.cs" />
+    <Compile Include="Repositories\FamilyRepository.cs" />
+    <Compile Include="Repositories\FamilyRepositoryLocator.cs" />
+    <Compile Include="Repositories\FamilyRepositoryManager.cs" />
+    <Compile Include="Repositories\FamilyRepositoryMetadata.cs" />
+    <Compile Include="Repositories\FamilyRepositoryPaths.cs" />
+    <Compile Include="Repositories\StorageFormat.cs" />
+    <Compile Include="Serialization\StorageJsonSerializer.cs" />
+    <Compile Include="Serialization\IFamilySnapshotSerializer.cs" />
+    <Compile Include="Serialization\SnapshotJsonSerializer.cs" />
+    <Compile Include="Versions\FileSystemVersionStore.cs" />
+    <Compile Include="Versions\FileSystemVersionContentStore.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

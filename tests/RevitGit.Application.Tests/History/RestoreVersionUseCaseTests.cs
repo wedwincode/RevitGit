@@ -24,6 +24,7 @@ namespace RevitGit.Application.Tests.History
             var restored = fixture.UseCase.Execute(first, null);
 
             Assert.Equal(first, fixture.ContentStore.RestoredVersionId);
+            Assert.Equal(restored.Id, fixture.ContentStore.StoredVersionId);
             Assert.Equal(third.Id, restored.ParentVersionId);
             Assert.Equal(first, restored.RestoredFromVersionId);
             Assert.Equal("Restored from version " + first, restored.Comment);
@@ -54,6 +55,23 @@ namespace RevitGit.Application.Tests.History
                 () => fixture.UseCase.Execute(source, null));
 
             Assert.Equal(ApplicationFailureStage.RestoreVersionContent, error.Stage);
+            Assert.Equal(versionCount, fixture.History.Versions.Count);
+            Assert.Equal(source, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
+            Assert.Equal(0, fixture.Repository.SaveCount);
+        }
+
+        [Fact]
+        public void StoringRestoredStateFailureDoesNotChangeOrPersistHistory()
+        {
+            var fixture = CreateFixture();
+            var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            var versionCount = fixture.History.Versions.Count;
+            fixture.ContentStore.StoreException = new InvalidOperationException("store failed");
+
+            var error = Assert.Throws<ApplicationOperationException>(
+                () => fixture.UseCase.Execute(source, null));
+
+            Assert.Equal(ApplicationFailureStage.StoreVersionContent, error.Stage);
             Assert.Equal(versionCount, fixture.History.Versions.Count);
             Assert.Equal(source, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
             Assert.Equal(0, fixture.Repository.SaveCount);
