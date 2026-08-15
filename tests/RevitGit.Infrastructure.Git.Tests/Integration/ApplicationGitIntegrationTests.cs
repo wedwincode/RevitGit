@@ -94,7 +94,7 @@ namespace RevitGit.Infrastructure.Git.Tests.Integration
                 Assert.Equal(initial, branchVersion.ParentVersionId);
                 Assert.Equal(branchVersion.Id, restored.ParentVersionId);
                 Assert.Equal(initial, restored.RestoredFromVersionId);
-                Assert.Equal(4, summary.Versions.Count);
+                Assert.Equal(new[] { restored.Id, branchVersion.Id, initial }, summary.Versions.Select(item => item.Id));
                 Assert.Equal(2, summary.Variants.Count);
                 Assert.Equal(4, adapter.CommitCount);
             }

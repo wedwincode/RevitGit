@@ -648,3 +648,13 @@ existing history is loaded and validated before appending, so persisted
 opens or initializes `FamilyRepositoryManager` only after the Revit save succeeds,
 then composes `FileSystemHistoryRepository` and `LibGit2VersionRepository`. A final
 load validates the transition `history.json`/Git topology; no repair is attempted.
+
+## 23. History pane (Epic 11)
+
+`RevitGit.UI` contains the WPF `HistoryView`, a headless-testable `HistoryViewModel`, and presentation-only version items. The UI assembly references Application/Domain but does not reference Autodesk Revit, LibGit2Sharp, or repository filesystem implementations.
+
+The existing Application `GetHistoryUseCase` is the canonical read path. It follows the current variant tip through parent versions and returns that ancestry newest-first. It also resolves a restored version's source timestamp before data reaches presentation code. The query reads history metadata/topology only; it does not materialize `.rfa` content, load snapshots, or run semantic comparison.
+
+`RevitGit.Revit2021` registers one dockable pane per Revit session under the fixed pane ID `9F0C2873-79CE-4C05-9C16-2B1FD7C8D9A1`. A session coordinator owns the pane, ViewModel, narrow refresh `ExternalEvent`, and Revit event subscriptions. The handler obtains the current `Document` only while executing in Revit context and maps it to no-document, non-family, unsaved-family, no-history, ready, or error presentation state. No Revit object is retained by the ViewModel.
+
+Refresh requests are raised when the pane is shown, from the manual refresh command, after a successful Save Version, and on `ViewActivated`, `DocumentOpened`, and `DocumentClosed`. All subscriptions are removed and the external event is disposed during add-in shutdown. Repository corruption is reported as a stable user-facing error; no repair is attempted.

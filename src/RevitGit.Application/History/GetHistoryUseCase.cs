@@ -37,22 +37,42 @@ namespace RevitGit.Application.History
                     variant.Id.Equals(history.CurrentVariantId)))
                 .ToList();
 
-            var versions = history.Versions.Values
-                .OrderByDescending(version => version.CreatedAt)
-                .ThenBy(version => version.Id.Value)
+            var versions = GetCurrentVariantAncestry(history, currentVersionId)
                 .Select(version => new VersionSummary(
                     version.Id,
                     version.ParentVersionId,
                     version.CreatedAt,
                     version.Comment,
                     version.RestoredFromVersionId,
-                    version.Id.Equals(currentVersionId)))
+                    version.Id.Equals(currentVersionId),
+                    version.RestoredFromVersionId == null
+                        ? (DateTimeOffset?)null
+                        : history.GetVersion(version.RestoredFromVersionId).CreatedAt))
                 .ToList();
 
             return new HistorySummary(
                 history.CurrentVariantId,
                 new ReadOnlyCollection<VariantSummary>(variants),
                 new ReadOnlyCollection<VersionSummary>(versions));
+        }
+
+        private static IEnumerable<Domain.History.Version> GetCurrentVariantAncestry(
+            Domain.History.FamilyHistory history,
+            Domain.Identifiers.VersionId currentVersionId)
+        {
+            var visited = new HashSet<Domain.Identifiers.VersionId>();
+            var versionId = currentVersionId;
+            while (versionId != null)
+            {
+                if (!visited.Add(versionId))
+                {
+                    throw new InvalidOperationException("History ancestry contains a cycle.");
+                }
+
+                var version = history.GetVersion(versionId);
+                yield return version;
+                versionId = version.ParentVersionId;
+            }
         }
 
     }

@@ -36,9 +36,10 @@ namespace RevitGit.Application.Tests.History
             Assert.True(summary.Variants.Single(item => item.Id.Equals(variant.Id)).IsCurrent);
             Assert.False(summary.Variants.Single(item => item.Id.Equals(mainId)).IsCurrent);
             Assert.Equal(third.Id, summary.Variants.Single(item => item.Id.Equals(mainId)).CurrentVersionId);
-            Assert.Equal(4, summary.Versions.Count);
+            Assert.Equal(new[] { restored.Id, second.Id, first }, summary.Versions.Select(item => item.Id));
             var restoredView = summary.Versions.Single(item => item.Id.Equals(restored.Id));
             Assert.Equal(first, restoredView.RestoredFromVersionId);
+            Assert.Equal(InitialTime, restoredView.RestoredFromCreatedAt);
             Assert.Equal("Restored", restoredView.Comment);
             Assert.Equal(InitialTime.AddMinutes(2), restoredView.CreatedAt);
             Assert.True(restoredView.IsCurrent);
@@ -46,27 +47,39 @@ namespace RevitGit.Application.Tests.History
         }
 
         [Fact]
-        public void VersionsUseDescendingTimestampThenAscendingIdOrder()
+        public void VersionsUseCurrentVariantAncestryNewestFirst()
         {
             var identity = new FamilyIdentity("family-1");
             var history = FamilyHistory.Create("Main", InitialTime, null);
-            history.AddVersion(InitialTime.AddMinutes(1), "B");
-            history.AddVersion(InitialTime.AddMinutes(1), "C");
-            history.AddVersion(InitialTime.AddMinutes(2), "D");
+            var second = history.AddVersion(InitialTime.AddMinutes(1), "B");
+            var mainTip = history.AddVersion(InitialTime.AddMinutes(2), "C");
+            var alternative = history.CreateVariant(second.Id, "Alternative");
+            history.SwitchVariant(alternative.Id);
+            var alternativeTip = history.AddVersion(InitialTime.AddMinutes(3), "D");
             var repository = new FakeHistoryRepository();
             repository.Seed(identity, history);
             var useCase = new GetHistoryUseCase(repository, new FakeFamilyDocumentGateway(identity));
-            var expected = history.Versions.Values
-                .OrderByDescending(version => version.CreatedAt)
-                .ThenBy(version => version.Id.Value)
-                .Select(version => version.Id)
-                .ToArray();
+            var initial = history.Versions.Values.Single(version => version.ParentVersionId == null).Id;
+            var expected = new[] { alternativeTip.Id, second.Id, initial };
 
             var firstRead = useCase.Execute().Versions.Select(version => version.Id).ToArray();
             var secondRead = useCase.Execute().Versions.Select(version => version.Id).ToArray();
 
             Assert.Equal(expected, firstRead);
             Assert.Equal(firstRead, secondRead);
+            Assert.DoesNotContain(mainTip.Id, firstRead);
+        }
+
+        [Fact]
+        public void MissingHistoryIsReportedWithoutCreatingIt()
+        {
+            var identity = new FamilyIdentity("family-1");
+            var repository = new FakeHistoryRepository();
+            var useCase = new GetHistoryUseCase(repository, new FakeFamilyDocumentGateway(identity));
+
+            Assert.Throws<RevitGit.Application.Exceptions.HistoryNotInitializedException>(
+                () => useCase.Execute());
+            Assert.False(repository.Exists(identity));
         }
     }
 }

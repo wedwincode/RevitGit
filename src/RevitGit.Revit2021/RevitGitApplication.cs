@@ -5,6 +5,7 @@ using System.Reflection;
 using Autodesk.Revit.UI;
 using RevitGit.Revit2021.Availability;
 using RevitGit.Revit2021.Commands;
+using RevitGit.Revit2021.History;
 
 namespace RevitGit.Revit2021
 {
@@ -29,6 +30,14 @@ namespace RevitGit.Revit2021
                 };
                 panel.AddItem(saveVersionButton);
 
+                HistoryPaneSession.Start(application);
+                var historyButton = new PushButtonData(
+                    "RevitGit.ShowHistory",
+                    "История",
+                    Assembly.GetExecutingAssembly().Location,
+                    typeof(ShowHistoryCommand).FullName);
+                panel.AddItem(historyButton);
+
                 var diagnosticButton = new PushButtonData(
                     "RevitGit.Diagnostic",
                     "Проверка",
@@ -47,6 +56,7 @@ namespace RevitGit.Revit2021
 
         public Result OnShutdown(UIControlledApplication application)
         {
+            HistoryPaneSession.Stop();
             return Result.Succeeded;
         }
 

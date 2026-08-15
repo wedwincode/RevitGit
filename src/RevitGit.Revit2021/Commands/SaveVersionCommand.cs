@@ -7,6 +7,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using RevitGit.Revit2021.Composition;
 using RevitGit.Revit2021.Diagnostics;
+using RevitGit.Revit2021.History;
 using RevitGit.Revit2021.Presentation;
 
 namespace RevitGit.Revit2021.Commands
@@ -63,6 +64,7 @@ namespace RevitGit.Revit2021.Commands
                 }
 
                 TaskDialog.Show(DialogTitle, confirmation);
+                HistoryPaneSession.NotifyHistoryChanged();
                 return Result.Succeeded;
             }
             catch (Exception exception)

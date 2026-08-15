@@ -34,6 +34,23 @@ namespace RevitGit.Revit2021.Composition
             return new RevitSaveVersionOperation(useCase, store, gateway, timings);
         }
 
+        public static GetHistoryUseCase CreateGetHistoryUseCase(Document document)
+        {
+            var timings = new SaveVersionTimings();
+            var clock = new SystemClock();
+            var gateway = new RevitFamilyDocumentGateway(document, timings);
+            var snapshotProvider = new RevitFamilySnapshotProvider(
+                document,
+                new RevitFamilySnapshotExtractor(),
+                timings);
+            var store = new LazyFamilyHistoryStore(
+                document.PathName,
+                new FamilyRepositoryManager(clock),
+                snapshotProvider,
+                new SnapshotJsonSerializer());
+            return new GetHistoryUseCase(store, gateway);
+        }
+
         private sealed class RevitSaveVersionOperation : ISaveVersionOperation
         {
             private readonly SaveVersionUseCase _useCase;

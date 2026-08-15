@@ -1,0 +1,87 @@
+<UserControl x:Class="RevitGit.UI.History.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:history="clr-namespace:RevitGit.UI.History"
+             MinWidth="280" MinHeight="300"
+             Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+             Foreground="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}">
+    <UserControl.Resources>
+        <Style x:Key="StatePanelStyle" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.Loading}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.NoDocument}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.NotFamily}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.UnsavedFamily}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.NoHistory}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.Error}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" Margin="0,0,0,14">
+            <Button DockPanel.Dock="Right" Padding="10,4" Command="{Binding RefreshCommand}" Content="Обновить" />
+            <TextBlock VerticalAlignment="Center" FontSize="17" FontWeight="SemiBold" Text="История семейства" />
+        </DockPanel>
+
+        <Grid Grid.Row="1">
+            <StackPanel Style="{StaticResource StatePanelStyle}" VerticalAlignment="Center">
+                <TextBlock Margin="8" Text="{Binding FamilyFileName}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" />
+                <TextBlock Margin="12" MaxWidth="340" Text="{Binding StatusMessage}" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers><DataTrigger Binding="{Binding State}" Value="{x:Static history:HistoryPaneState.Ready}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding FamilyFileName}" />
+                    <TextBlock Margin="0,4,0,0"><Run Text="Текущий вариант: " /><Run FontWeight="SemiBold" Text="{Binding CurrentVariantName}" /></TextBlock>
+                </StackPanel>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
+                         ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling" HorizontalContentAlignment="Stretch">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="7,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="●" FontSize="12" VerticalAlignment="Top" ToolTip="Точка на временной шкале" />
+                                <StackPanel Grid.Column="1">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" FontWeight="SemiBold" Text="{Binding CurrentLabel}" />
+                                        <TextBlock Text="{Binding CreatedAtText}" />
+                                    </DockPanel>
+                                    <TextBlock Margin="0,4,0,0" MaxHeight="42" Text="{Binding Comment}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Comment}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Text="{Binding RestoredFromText}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Border Grid.Row="2" Margin="0,12,0,0" Padding="12" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}">
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,8" FontWeight="SemiBold" Text="Выбранная версия" />
+                        <TextBlock Text="{Binding SelectedVersion.CreatedAtText}" />
+                        <TextBlock Margin="0,7,0,0" Text="{Binding SelectedVersion.Comment}" TextWrapping="Wrap" MaxHeight="140" />
+                        <TextBlock Margin="0,7,0,0" FontWeight="SemiBold" Text="{Binding SelectedVersion.CurrentLabel}" />
+                        <TextBlock Margin="0,7,0,0" Text="{Binding SelectedVersion.RestoredFromText}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

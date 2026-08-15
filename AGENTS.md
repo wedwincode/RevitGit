@@ -248,6 +248,16 @@ For Revit snapshot extraction changes:
 
 Do not replace real Revit snapshot smoke testing with a mocked `Document`.
 
+For History UI changes:
+
+1. run focused ViewModel tests;
+2. run all headless tests;
+3. run the Harness smoke scenarios;
+4. build the Revit project;
+5. deploy explicitly;
+6. run the manual DockablePane smoke checklist;
+7. reopen a real family and verify its persisted history.
+
 ## Code style
 
 - favor small classes with explicit responsibility;
