@@ -69,6 +69,17 @@ namespace RevitGit.Revit2021.Composition
                 .Execute(new FamilyIdentity(familyPath), before, current);
         }
 
+        public static FamilySnapshot GetCanonicalCurrentSnapshotIfWorkingFileMatches(
+            string familyPath,
+            VersionId currentVersionId)
+        {
+            var store = CreateReadStore(familyPath);
+            var identity = new FamilyIdentity(familyPath);
+            return store.WorkingFileMatchesVersion(identity, currentVersionId)
+                ? store.ReadSnapshot(identity, currentVersionId)
+                : null;
+        }
+
         public static RestoreVersionUseCase CreateRestoreVersionUseCase(Document document)
         {
             var timings = new SaveVersionTimings();

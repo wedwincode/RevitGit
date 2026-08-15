@@ -229,6 +229,7 @@ namespace RevitGit.Revit2021.History
                 var currentVariant = summary.Variants.Single(variant => variant.IsCurrent);
                 _viewModel.ShowHistory(Path.GetFileName(reopened.PathName), currentVariant.Name, summary.Versions);
                 _displayedFamilyPath = reopened.PathName;
+                application.GetDockablePane(HistoryPaneIds.PaneId).Show();
                 TaskDialog.Show("История семейств", "Версия восстановлена.");
             }
             catch (RestoreReopenException exception)
@@ -288,6 +289,25 @@ namespace RevitGit.Revit2021.History
 
                 var extraction = Stopwatch.StartNew();
                 var current = new RevitFamilySnapshotExtractor().Extract(document);
+                if (!document.IsModified)
+                {
+                    var currentVersion = _viewModel.Versions.SingleOrDefault(item => item.IsCurrent);
+                    if (currentVersion != null)
+                    {
+                        var canonical = RevitCompositionRoot.GetCanonicalCurrentSnapshotIfWorkingFileMatches(
+                            document.PathName,
+                            currentVersion.Id);
+                        if (canonical != null)
+                        {
+                            current = new RevitGit.Domain.Snapshots.FamilySnapshot(
+                                current.FamilyName,
+                                current.Category,
+                                current.Parameters,
+                                current.Types,
+                                canonical.GeometryFingerprint);
+                        }
+                    }
+                }
                 extraction.Stop();
                 var diffTimer = Stopwatch.StartNew();
                 var diff = RevitCompositionRoot.CompareVersionWithSnapshot(document.PathName, sourceVersionId, current);

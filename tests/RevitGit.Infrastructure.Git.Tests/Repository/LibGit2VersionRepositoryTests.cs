@@ -149,6 +149,21 @@ namespace RevitGit.Infrastructure.Git.Tests.Repository
         }
 
         [Fact]
+        public void WorkingFileMatchRequiresByteExactVersionContent()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var history = fixture.CreateInitial("A", new byte[] { 1, 2, 3 });
+                var source = history.Versions.Values.Single().Id;
+
+                Assert.True(fixture.Adapter.WorkingFileMatchesVersion(fixture.Identity, source));
+
+                File.WriteAllBytes(fixture.FamilyPath, new byte[] { 1, 2, 4 });
+                Assert.False(fixture.Adapter.WorkingFileMatchesVersion(fixture.Identity, source));
+            }
+        }
+
+        [Fact]
         public void ReopenAndHistoricalRead_PreserveMappingsBranchAndCurrentWorkspace()
         {
             using (var fixture = new GitFixture())

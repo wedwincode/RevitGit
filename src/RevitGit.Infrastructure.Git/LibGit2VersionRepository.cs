@@ -17,7 +17,7 @@ using HistoryVersion = RevitGit.Domain.History.Version;
 
 namespace RevitGit.Infrastructure.Git
 {
-    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore
+    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore, IVersionContentMatcher
     {
         private const string FamilyFileName = "family.rfa";
         private const string SnapshotFileName = "snapshot.json";
@@ -291,6 +291,14 @@ namespace RevitGit.Infrastructure.Git
             {
                 throw new GitRepositoryCorruptedException("The stored version snapshot is invalid.", exception);
             }
+        }
+
+        public bool WorkingFileMatchesVersion(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            RequireIdentity(familyIdentity);
+            if (versionId == null) throw new ArgumentNullException(nameof(versionId));
+            return ReadAllBytesShared(familyIdentity.Value)
+                .SequenceEqual(ReadVersionFile(versionId, FamilyFileName));
         }
 
         public byte[] ReadVersionFile(VersionId versionId, string path)

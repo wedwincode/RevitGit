@@ -10,7 +10,7 @@ using RevitGit.Infrastructure.Git;
 
 namespace RevitGit.Revit2021.Composition
 {
-    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore
+    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore, IVersionContentMatcher
     {
         private readonly string _familyPath;
         private readonly FamilyRepositoryManager _repositoryManager;
@@ -97,6 +97,11 @@ namespace RevitGit.Revit2021.Composition
         public Domain.Snapshots.FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
         {
             return EnsureAdapter().ReadSnapshot(familyIdentity, versionId);
+        }
+
+        public bool WorkingFileMatchesVersion(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            return EnsureAdapter().WorkingFileMatchesVersion(familyIdentity, versionId);
         }
 
         public void Validate(FamilyIdentity familyIdentity)
