@@ -392,6 +392,18 @@ Recommended grouping:
 
 Within a group: stable key then display name.
 
+The schema 1 diff implementation lives in `Application` as a pure, stateless
+service over Domain snapshots. Parameters are matched by their case-sensitive
+stable key, family types by their case-sensitive name, and type values by parameter
+stable key. Collection changes carry `Added`, `Removed`, or `Modified` together
+with their before/after states; modified parameters also expose field-level name,
+data type, scope, and formula changes. No rename inference is performed.
+
+Diff results are ordered deterministically by display name and then stable key for
+parameters and type values, and by name for family types. Version-to-version
+orchestration remains deferred until saved snapshots can be retrieved through a
+storage port; the current service compares two already-materialized snapshots.
+
 ## 15. Geometry strategy
 
 Do not make full geometry diff a gate for MVP.

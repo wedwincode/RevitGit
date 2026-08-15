@@ -18,6 +18,13 @@
     <Compile Include="Abstractions\IFamilyDocumentGateway.cs" />
     <Compile Include="Abstractions\IHistoryRepository.cs" />
     <Compile Include="Abstractions\IVersionContentStore.cs" />
+    <Compile Include="Diff\ChangeKind.cs" />
+    <Compile Include="Diff\FamilyDiff.cs" />
+    <Compile Include="Diff\FamilyDiffEngine.cs" />
+    <Compile Include="Diff\FamilyTypeChange.cs" />
+    <Compile Include="Diff\ParameterChange.cs" />
+    <Compile Include="Diff\ParameterValueChange.cs" />
+    <Compile Include="Diff\ValueChange.cs" />
     <Compile Include="Exceptions\ApplicationFailureStage.cs" />
     <Compile Include="Exceptions\ApplicationOperationException.cs" />
     <Compile Include="Exceptions\HistoryNotInitializedException.cs" />
