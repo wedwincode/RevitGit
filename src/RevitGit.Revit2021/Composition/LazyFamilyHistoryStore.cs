@@ -10,7 +10,7 @@ using RevitGit.Infrastructure.Git;
 
 namespace RevitGit.Revit2021.Composition
 {
-    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore
+    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore
     {
         private readonly string _familyPath;
         private readonly FamilyRepositoryManager _repositoryManager;
@@ -69,6 +69,11 @@ namespace RevitGit.Revit2021.Composition
             EnsureAdapter().RestoreVersionContent(familyIdentity, versionId);
         }
 
+        public Domain.Snapshots.FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            return EnsureAdapter().ReadSnapshot(familyIdentity, versionId);
+        }
+
         public void Validate(FamilyIdentity familyIdentity)
         {
             EnsureAdapter().Load(familyIdentity);
@@ -88,7 +93,8 @@ namespace RevitGit.Revit2021.Composition
             _adapter = new LibGit2VersionRepository(
                 repository.Paths.RepositoryDirectory,
                 metadataRepository,
-                GetPreparedSnapshot);
+                GetPreparedSnapshot,
+                _snapshotSerializer.Deserialize);
             return _adapter;
         }
 

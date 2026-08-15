@@ -17,10 +17,19 @@
   <ItemGroup>
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Common\ViewModelBase.cs" />
+    <Compile Include="Compare\CompareFieldViewModel.cs" />
+    <Compile Include="Compare\CompareViewModel.cs" />
+    <Compile Include="Compare\CompareView.xaml.cs"><DependentUpon>CompareView.xaml</DependentUpon></Compile>
+    <Compile Include="Compare\ComparisonSideViewModel.cs" />
+    <Compile Include="Compare\FamilyTypeChangeViewModel.cs" />
+    <Compile Include="Compare\ParameterChangeViewModel.cs" />
+    <Compile Include="Compare\ParameterValueChangeViewModel.cs" />
+    <Compile Include="Compare\ParameterValueFormatter.cs" />
     <Compile Include="History\HistoryPaneState.cs" />
     <Compile Include="History\HistoryVersionItemViewModel.cs" />
     <Compile Include="History\HistoryViewModel.cs" />
     <Compile Include="History\IHistoryRefreshRequest.cs" />
+    <Compile Include="History\IHistoryCompareRequest.cs" />
     <Compile Include="History\HistoryView.xaml.cs"><DependentUpon>HistoryView.xaml</DependentUpon></Compile>
     <Compile Include="SaveVersion\SaveVersionDialog.xaml.cs">
       <DependentUpon>SaveVersionDialog.xaml</DependentUpon>
@@ -32,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="History\HistoryView.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Page Include="Compare\CompareView.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -8,12 +8,31 @@ using RevitGit.Domain.History;
 using RevitGit.Domain.Identifiers;
 using RevitGit.Infrastructure.FileSystem.History;
 using RevitGit.Infrastructure.FileSystem.Repositories;
+using RevitGit.Infrastructure.FileSystem.Serialization;
+using RevitGit.Domain.Snapshots;
 using Xunit;
 
 namespace RevitGit.Infrastructure.Git.Tests.Repository
 {
     public sealed class LibGit2VersionRepositoryTests
     {
+        [Fact]
+        public void HistoricalSnapshotReaderReturnsNeutralSnapshotFromRequestedVersion()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var serializer = new SnapshotJsonSerializer();
+                var expected = new FamilySnapshot("Door", "Doors", new FamilyParameterSnapshot[0], new FamilyTypeSnapshot[0], "geometry-a");
+                fixture.Snapshot = serializer.Serialize(expected);
+                var history = fixture.CreateInitial("A", new byte[] { 1 });
+                var versionId = history.Versions.Values.Single().Id;
+
+                var reader = fixture.Reopen(serializer.Deserialize);
+
+                Assert.Equal(expected, reader.ReadSnapshot(fixture.Identity, versionId));
+            }
+        }
+
         [Fact]
         public void SaveThreeVersions_CreatesLinearSingleParentGraphAndControlledTree()
         {
@@ -369,6 +388,11 @@ namespace RevitGit.Infrastructure.Git.Tests.Repository
             public LibGit2VersionRepository Reopen()
             {
                 return NewAdapter();
+            }
+
+            public LibGit2VersionRepository Reopen(Func<byte[], FamilySnapshot> deserializer)
+            {
+                return new LibGit2VersionRepository(RepositoryDirectory, _metadata, () => Snapshot, deserializer);
             }
 
             public void Dispose()

@@ -8,7 +8,7 @@ using RevitGit.Infrastructure.FileSystem.Serialization;
 
 namespace RevitGit.Infrastructure.FileSystem.Versions
 {
-    public sealed class FileSystemVersionContentStore : IVersionContentStore
+    public sealed class FileSystemVersionContentStore : IVersionContentStore, IVersionSnapshotStore
     {
         private readonly IFamilySnapshotProvider _snapshotProvider;
         private readonly FileSystemVersionStore _versionStore;
@@ -45,7 +45,7 @@ namespace RevitGit.Infrastructure.FileSystem.Versions
             _versionStore.RestoreVersion(familyIdentity.Value, versionId);
         }
 
-        public FamilySnapshot LoadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
+        public FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
         {
             if (familyIdentity == null)
             {
@@ -53,6 +53,11 @@ namespace RevitGit.Infrastructure.FileSystem.Versions
             }
 
             return _versionStore.LoadSnapshot(familyIdentity.Value, versionId);
+        }
+
+        public FamilySnapshot LoadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            return ReadSnapshot(familyIdentity, versionId);
         }
     }
 }

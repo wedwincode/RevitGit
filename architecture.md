@@ -658,3 +658,9 @@ The existing Application `GetHistoryUseCase` is the canonical read path. It foll
 `RevitGit.Revit2021` registers one dockable pane per Revit session under the fixed pane ID `9F0C2873-79CE-4C05-9C16-2B1FD7C8D9A1`. A session coordinator owns the pane, ViewModel, narrow refresh `ExternalEvent`, and Revit event subscriptions. The handler obtains the current `Document` only while executing in Revit context and maps it to no-document, non-family, unsaved-family, no-history, ready, or error presentation state. No Revit object is retained by the ViewModel.
 
 Refresh requests are raised when the pane is shown, from the manual refresh command, after a successful Save Version, and on `ViewActivated`, `DocumentOpened`, and `DocumentClosed`. All subscriptions are removed and the external event is disposed during add-in shutdown. Repository corruption is reported as a stable user-facing error; no repair is attempted.
+
+## 24. Compare in History pane (Epic 12)
+
+Application exposes `CompareSavedVersionsUseCase` and `CompareVersionWithSnapshotUseCase` over the neutral `IVersionSnapshotStore`. Both validate `VersionId` against the complete family history, so versions from different variants may be compared without introducing variant restrictions. The Git adapter reads `snapshot.json` from the requested immutable version and deserializes it through a neutral delegate supplied by composition.
+
+Saved-to-saved comparison runs without Revit API access. Saved-to-current comparison is raised through the History pane `ExternalEvent`; its handler revalidates the active family path, extracts a neutral live `FamilySnapshot`, and passes it to Application. It never calls `Document.Save`, opens a transaction, creates a Version, or reads current `.rfa` bytes. UI maps the returned `FamilyDiff` to Russian presentation models and does not recompute semantic changes.

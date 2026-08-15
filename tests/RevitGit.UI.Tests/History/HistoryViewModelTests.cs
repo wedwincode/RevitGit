@@ -4,6 +4,9 @@ using System.Linq;
 using RevitGit.Application.Models;
 using RevitGit.Domain.Identifiers;
 using RevitGit.UI.History;
+using RevitGit.UI.Compare;
+using RevitGit.Application.Diff;
+using RevitGit.Domain.Snapshots;
 using Xunit;
 
 namespace RevitGit.UI.Tests.History
@@ -157,6 +160,62 @@ namespace RevitGit.UI.Tests.History
             Assert.Equal(comment, viewModel.SelectedVersion.Comment);
         }
 
+        [Fact]
+        public void CompareWithCurrentSetsBusyPreventsOverlapAndBackPreservesSelection()
+        {
+            var request = new CompareRequest();
+            var viewModel = new HistoryViewModel(new RefreshRequest(), request);
+            var source = Summary(FirstTime, "A", true);
+            viewModel.ShowHistory("Door.rfa", "Основной", new[] { source });
+
+            viewModel.CompareWithCurrentCommand.Execute(null);
+            Assert.True(viewModel.IsBusy);
+            Assert.False(viewModel.CompareWithCurrentCommand.CanExecute(null));
+            Assert.Equal(source.Id, request.CurrentSource);
+
+            var snapshot = new FamilySnapshot("Door", "Doors", new FamilyParameterSnapshot[0], new FamilyTypeSnapshot[0], "a");
+            viewModel.ShowComparison(new CompareViewModel(new FamilyDiffEngine().Compare(snapshot, snapshot),
+                new ComparisonSideViewModel("A", null), new ComparisonSideViewModel("Текущее состояние", null)));
+            Assert.True(viewModel.IsComparePage);
+            viewModel.BackToHistoryCommand.Execute(null);
+            Assert.True(viewModel.IsHistoryPage);
+            Assert.Equal(source.Id, viewModel.SelectedVersion.Id);
+        }
+
+        [Fact]
+        public void SavedComparisonUsesSelectedSourceAndExplicitTargetDirection()
+        {
+            var request = new CompareRequest();
+            var viewModel = new HistoryViewModel(new RefreshRequest(), request);
+            var target = Summary(FirstTime, "A");
+            var source = Summary(FirstTime.AddHours(1), "B", true);
+            viewModel.ShowHistory("Door.rfa", "Основной", new[] { source, target });
+
+            viewModel.ChooseOtherVersionCommand.Execute(null);
+            viewModel.SelectedComparisonTarget = viewModel.Versions.Single(item => item.Id.Equals(target.Id));
+            viewModel.ConfirmSavedComparisonCommand.Execute(null);
+
+            Assert.Equal(source.Id, request.SavedSource);
+            Assert.Equal(target.Id, request.SavedTarget);
+        }
+
+        [Fact]
+        public void CompareFailureShowsRecoverablePageAndBackReturnsToSameSelection()
+        {
+            var viewModel = new HistoryViewModel(new RefreshRequest(), new CompareRequest());
+            var source = Summary(FirstTime, "A", true);
+            viewModel.ShowHistory("Door.rfa", "Основной", new[] { source });
+            viewModel.CompareWithCurrentCommand.Execute(null);
+
+            viewModel.ShowCompareError("Не удалось получить текущее состояние семейства.");
+
+            Assert.True(viewModel.IsComparePage);
+            Assert.False(viewModel.IsBusy);
+            Assert.Equal("Не удалось получить текущее состояние семейства.", viewModel.CompareErrorMessage);
+            viewModel.BackToHistoryCommand.Execute(null);
+            Assert.Equal(source.Id, viewModel.SelectedVersion.Id);
+        }
+
         private static HistoryViewModel CreateViewModel() => new HistoryViewModel(new RefreshRequest());
 
         private static VersionSummary Summary(
@@ -174,6 +233,16 @@ namespace RevitGit.UI.Tests.History
         {
             public int Count { get; private set; }
             public void RequestRefresh() { Count++; }
+        }
+
+        private sealed class CompareRequest : IHistoryCompareRequest
+        {
+            public VersionId CurrentSource { get; private set; }
+            public VersionId SavedSource { get; private set; }
+            public VersionId SavedTarget { get; private set; }
+            public void RequestCompareWithCurrent(VersionId sourceVersionId) { CurrentSource = sourceVersionId; }
+            public void RequestCompareSaved(VersionId sourceVersionId, VersionId targetVersionId)
+            { SavedSource = sourceVersionId; SavedTarget = targetVersionId; }
         }
     }
 }

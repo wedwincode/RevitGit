@@ -7,12 +7,14 @@ namespace RevitGit.Application.Diff
         internal ParameterValueChange(
             string parameterStableKey,
             string parameterName,
+            ParameterDataType parameterDataType,
             ChangeKind kind,
             ParameterValue before,
             ParameterValue after)
         {
             ParameterStableKey = parameterStableKey;
             ParameterName = parameterName;
+            ParameterDataType = parameterDataType;
             Kind = kind;
             Before = before;
             After = after;
@@ -21,6 +23,8 @@ namespace RevitGit.Application.Diff
         public string ParameterStableKey { get; }
 
         public string ParameterName { get; }
+
+        public ParameterDataType ParameterDataType { get; }
 
         public ChangeKind Kind { get; }
 

@@ -5,6 +5,7 @@ namespace RevitGit.Application.Exceptions
         SaveDocument,
         StoreVersionContent,
         RestoreVersionContent,
-        PersistHistory
+        PersistHistory,
+        ReadVersionSnapshot
     }
 }

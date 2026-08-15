@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Input;
 using RevitGit.Application.Models;
 using RevitGit.UI.Common;
+using RevitGit.UI.Compare;
 
 namespace RevitGit.UI.History
 {
@@ -14,20 +15,41 @@ namespace RevitGit.UI.History
             new ReadOnlyCollection<HistoryVersionItemViewModel>(new List<HistoryVersionItemViewModel>());
 
         private readonly IHistoryRefreshRequest _refreshRequest;
+        private readonly IHistoryCompareRequest _compareRequest;
         private HistoryPaneState _state;
         private string _statusMessage;
         private string _familyFileName;
         private string _currentVariantName;
         private IReadOnlyList<HistoryVersionItemViewModel> _versions;
         private HistoryVersionItemViewModel _selectedVersion;
+        private HistoryVersionItemViewModel _selectedComparisonTarget;
+        private bool _isBusy;
+        private bool _isComparePage;
+        private bool _isChoosingTarget;
+        private CompareViewModel _comparison;
+        private string _compareErrorMessage;
+        private readonly RelayCommand _compareWithCurrentCommand;
+        private readonly RelayCommand _chooseOtherVersionCommand;
+        private readonly RelayCommand _confirmSavedComparisonCommand;
 
-        public HistoryViewModel(IHistoryRefreshRequest refreshRequest)
+        public HistoryViewModel(IHistoryRefreshRequest refreshRequest) : this(refreshRequest, null) { }
+
+        public HistoryViewModel(IHistoryRefreshRequest refreshRequest, IHistoryCompareRequest compareRequest)
         {
             _refreshRequest = refreshRequest ?? throw new ArgumentNullException(nameof(refreshRequest));
+            _compareRequest = compareRequest;
             _versions = EmptyVersions;
             _state = HistoryPaneState.NoDocument;
             _statusMessage = MessageFor(HistoryPaneState.NoDocument);
             RefreshCommand = new RelayCommand(Refresh);
+            _compareWithCurrentCommand = new RelayCommand(CompareWithCurrent, CanCompare);
+            _chooseOtherVersionCommand = new RelayCommand(ChooseOtherVersion, CanCompare);
+            _confirmSavedComparisonCommand = new RelayCommand(ConfirmSavedComparison,
+                () => CanCompare() && SelectedComparisonTarget != null);
+            CompareWithCurrentCommand = _compareWithCurrentCommand;
+            ChooseOtherVersionCommand = _chooseOtherVersionCommand;
+            ConfirmSavedComparisonCommand = _confirmSavedComparisonCommand;
+            BackToHistoryCommand = new RelayCommand(BackToHistory);
         }
 
         public HistoryPaneState State { get => _state; private set => SetProperty(ref _state, value); }
@@ -39,10 +61,27 @@ namespace RevitGit.UI.History
         public HistoryVersionItemViewModel SelectedVersion
         {
             get => _selectedVersion;
-            set => SetProperty(ref _selectedVersion, value);
+            set { if (SetProperty(ref _selectedVersion, value)) RaiseCompareCanExecuteChanged(); }
         }
 
+        public HistoryVersionItemViewModel SelectedComparisonTarget
+        {
+            get => _selectedComparisonTarget;
+            set { if (SetProperty(ref _selectedComparisonTarget, value)) _confirmSavedComparisonCommand.RaiseCanExecuteChanged(); }
+        }
+
+        public bool IsBusy { get => _isBusy; private set { if (SetProperty(ref _isBusy, value)) RaiseCompareCanExecuteChanged(); } }
+        public bool IsComparePage { get => _isComparePage; private set { if (SetProperty(ref _isComparePage, value)) OnPropertyChanged(nameof(IsHistoryPage)); } }
+        public bool IsHistoryPage => !IsComparePage;
+        public bool IsChoosingTarget { get => _isChoosingTarget; private set => SetProperty(ref _isChoosingTarget, value); }
+        public CompareViewModel Comparison { get => _comparison; private set => SetProperty(ref _comparison, value); }
+        public string CompareErrorMessage { get => _compareErrorMessage; private set => SetProperty(ref _compareErrorMessage, value); }
+
         public ICommand RefreshCommand { get; }
+        public ICommand CompareWithCurrentCommand { get; }
+        public ICommand ChooseOtherVersionCommand { get; }
+        public ICommand ConfirmSavedComparisonCommand { get; }
+        public ICommand BackToHistoryCommand { get; }
 
         public void BeginRefresh()
         {
@@ -89,6 +128,9 @@ namespace RevitGit.UI.History
             StatusMessage = null;
             State = HistoryPaneState.Ready;
             SelectedVersion = items.FirstOrDefault(item => item.IsCurrent) ?? items.FirstOrDefault();
+            IsComparePage = false;
+            IsChoosingTarget = false;
+            IsBusy = false;
         }
 
         public void ShowError(bool corrupted)
@@ -106,12 +148,63 @@ namespace RevitGit.UI.History
             _refreshRequest.RequestRefresh();
         }
 
+        public void ShowComparison(CompareViewModel comparison)
+        {
+            Comparison = comparison ?? throw new ArgumentNullException(nameof(comparison));
+            CompareErrorMessage = null;
+            IsBusy = false;
+            IsChoosingTarget = false;
+            IsComparePage = true;
+        }
+
+        public void ShowCompareError(string message)
+        {
+            Comparison = null;
+            CompareErrorMessage = message;
+            IsBusy = false;
+            IsChoosingTarget = false;
+            IsComparePage = true;
+        }
+
+        private bool CanCompare() => _compareRequest != null && State == HistoryPaneState.Ready && SelectedVersion != null && !IsBusy;
+        private void CompareWithCurrent()
+        {
+            IsBusy = true;
+            _compareRequest.RequestCompareWithCurrent(SelectedVersion.Id);
+        }
+        private void ChooseOtherVersion()
+        {
+            IsChoosingTarget = true;
+            SelectedComparisonTarget = Versions.FirstOrDefault(item => !item.Id.Equals(SelectedVersion.Id));
+        }
+        private void ConfirmSavedComparison()
+        {
+            IsBusy = true;
+            _compareRequest.RequestCompareSaved(SelectedVersion.Id, SelectedComparisonTarget.Id);
+        }
+        private void BackToHistory()
+        {
+            IsComparePage = false;
+            CompareErrorMessage = null;
+            Comparison = null;
+        }
+        private void RaiseCompareCanExecuteChanged()
+        {
+            _compareWithCurrentCommand?.RaiseCanExecuteChanged();
+            _chooseOtherVersionCommand?.RaiseCanExecuteChanged();
+            _confirmSavedComparisonCommand?.RaiseCanExecuteChanged();
+        }
+
         private void ResetContent()
         {
             FamilyFileName = null;
             CurrentVariantName = null;
             Versions = EmptyVersions;
             SelectedVersion = null;
+            SelectedComparisonTarget = null;
+            IsComparePage = false;
+            IsChoosingTarget = false;
+            IsBusy = false;
         }
 
         private static string MessageFor(HistoryPaneState state)

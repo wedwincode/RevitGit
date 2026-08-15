@@ -7,16 +7,20 @@ namespace RevitGit.Revit2021.History
     internal sealed class RevitExternalEventDispatcher : IHistoryRefreshRequest, IDisposable
     {
         private readonly ExternalEvent _externalEvent;
+        public IExternalEventHandler Handler { get; }
 
         public RevitExternalEventDispatcher(IExternalEventHandler handler)
         {
-            _externalEvent = ExternalEvent.Create(handler ?? throw new ArgumentNullException(nameof(handler)));
+            Handler = handler ?? throw new ArgumentNullException(nameof(handler));
+            _externalEvent = ExternalEvent.Create(Handler);
         }
 
         public void RequestRefresh()
         {
-            _externalEvent.Raise();
+            Raise();
         }
+
+        public void Raise() => _externalEvent.Raise();
 
         public void Dispose()
         {

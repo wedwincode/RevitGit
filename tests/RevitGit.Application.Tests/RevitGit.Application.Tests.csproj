@@ -11,10 +11,12 @@
   <ItemGroup>
     <Compile Include="Diff\FamilyDiffEngineParameterTests.cs" />
     <Compile Include="Diff\FamilyDiffEngineTypeAndGeometryTests.cs" />
+    <Compile Include="Compare\CompareVersionsUseCaseTests.cs" />
     <Compile Include="Fakes\FakeClock.cs" />
     <Compile Include="Fakes\FakeFamilyDocumentGateway.cs" />
     <Compile Include="Fakes\FakeHistoryRepository.cs" />
     <Compile Include="Fakes\FakeVersionContentStore.cs" />
+    <Compile Include="Fakes\FakeVersionSnapshotStore.cs" />
     <Compile Include="History\InitializeHistoryUseCaseTests.cs" />
     <Compile Include="History\GetHistoryUseCaseTests.cs" />
     <Compile Include="History\SaveVersionUseCaseTests.cs" />

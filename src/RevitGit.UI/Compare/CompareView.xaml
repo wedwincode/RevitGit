@@ -1,0 +1,51 @@
+<UserControl x:Class="RevitGit.UI.Compare.CompareView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,6,12">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="Сравнение" />
+            <Grid Margin="0,12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding Before.Label}"/><TextBlock Text="{Binding Before.Comment}" TextWrapping="Wrap"/></StackPanel>
+                <TextBlock Grid.Column="1" Margin="12,0" FontSize="18" Text="→"/>
+                <StackPanel Grid.Column="2"><TextBlock FontWeight="SemiBold" Text="{Binding After.Label}"/><TextBlock Text="{Binding After.Comment}" TextWrapping="Wrap"/></StackPanel>
+            </Grid>
+            <TextBlock FontWeight="SemiBold" Text="Изменения" />
+            <TextBlock Margin="0,4,0,10" Text="{Binding Summary}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,12" FontSize="16" Text="{Binding EmptyMessage}" />
+
+            <Expander Margin="0,4" IsExpanded="True" Header="Семейство">
+                <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasFamilyChanges}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Expander.Style>
+                <ItemsControl ItemsSource="{Binding FamilyChanges}"><ItemsControl.ItemTemplate><DataTemplate>
+                    <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </Expander>
+            <Expander Margin="0,4" IsExpanded="True" Header="Параметры">
+                <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasParameterChanges}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Expander.Style>
+                <ItemsControl ItemsSource="{Binding ParameterChanges}"><ItemsControl.ItemTemplate><DataTemplate>
+                    <Border Margin="4" Padding="8" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}">
+                        <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" FontWeight="SemiBold" Text="{Binding ChangeLabel}"/><TextBlock FontWeight="SemiBold" Text="{Binding Name}"/></DockPanel>
+                            <ItemsControl ItemsSource="{Binding Fields}"><ItemsControl.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="8,5,0,0"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                            </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </Expander>
+            <Expander Margin="0,4" IsExpanded="True" Header="Типы семейства">
+                <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasTypeChanges}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Expander.Style>
+                <ItemsControl ItemsSource="{Binding TypeChanges}"><ItemsControl.ItemTemplate><DataTemplate>
+                    <Expander Margin="4" Padding="6" IsExpanded="True"><Expander.Header><DockPanel><TextBlock Margin="0,0,12,0" FontWeight="SemiBold" Text="{Binding Name}"/><TextBlock Text="{Binding ChangeLabel}"/></DockPanel></Expander.Header>
+                        <ItemsControl ItemsSource="{Binding Values}"><ItemsControl.ItemTemplate><DataTemplate>
+                            <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Name}"/><TextBlock><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    </Expander>
+                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </Expander>
+            <Expander Margin="0,4" IsExpanded="True" Header="Геометрия">
+                <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding GeometryChanged}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Expander.Style>
+                <TextBlock Margin="8" Text="{Binding GeometryMessage}" />
+            </Expander>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

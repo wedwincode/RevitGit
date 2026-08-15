@@ -3,10 +3,11 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using RevitGit.UI.History;
+using RevitGit.Domain.Identifiers;
 
 namespace RevitGit.Revit2021.History
 {
-    internal sealed class HistoryPaneCoordinator : IDisposable
+    internal sealed class HistoryPaneCoordinator : IDisposable, IHistoryCompareRequest
     {
         private readonly UIControlledApplication _application;
         private readonly HistoryViewModel _viewModel;
@@ -16,10 +17,11 @@ namespace RevitGit.Revit2021.History
         {
             _application = application ?? throw new ArgumentNullException(nameof(application));
             var bridge = new HistoryRefreshRequestBridge();
-            _viewModel = new HistoryViewModel(bridge);
+            _viewModel = new HistoryViewModel(bridge, bridge);
             var handler = new RefreshHistoryExternalEventHandler(_viewModel);
             _dispatcher = new RevitExternalEventDispatcher(handler);
             bridge.Attach(_dispatcher);
+            bridge.AttachCompare(this);
 
             var provider = new HistoryDockablePaneProvider(new HistoryView(_viewModel));
             _application.RegisterDockablePane(HistoryPaneIds.PaneId, "История семейства", provider);
@@ -42,6 +44,17 @@ namespace RevitGit.Revit2021.History
         public void NotifyHistoryChanged()
         {
             RequestRefresh();
+        }
+
+        public void RequestCompareWithCurrent(VersionId sourceVersionId)
+        {
+            ((RefreshHistoryExternalEventHandler)_dispatcher.Handler).QueueCompareWithCurrent(sourceVersionId);
+            _dispatcher.Raise();
+        }
+
+        public void RequestCompareSaved(VersionId sourceVersionId, VersionId targetVersionId)
+        {
+            ((RefreshHistoryExternalEventHandler)_dispatcher.Handler).CompareSaved(sourceVersionId, targetVersionId);
         }
 
         public void Dispose()

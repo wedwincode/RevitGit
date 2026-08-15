@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using RevitGit.Application.Abstractions;
 using RevitGit.Application.Diff;
+using RevitGit.Application.Compare;
 using RevitGit.Application.History;
 using RevitGit.Application.Models;
 using RevitGit.Domain.History;
@@ -116,9 +117,11 @@ namespace RevitGit.Harness
             if (!Guid.TryParse(beforeText, out beforeGuid) || !Guid.TryParse(afterText, out afterGuid))
                 throw new CliUsageException("compare version identifiers must be GUID values shown by inspect --verbose.");
             var root = HarnessCompositionRoot.Open(familyPath, new HarnessClock());
-            var before = root.ReadSnapshot(new VersionId(beforeGuid));
-            var after = root.ReadSnapshot(new VersionId(afterGuid));
-            _output.Write(DiffTextRenderer.Render(new FamilyDiffEngine().Compare(before, after)));
+            var before = new VersionId(beforeGuid);
+            var after = new VersionId(afterGuid);
+            var diff = new CompareSavedVersionsUseCase(root.Adapter, root.Adapter, new FamilyDiffEngine())
+                .Execute(root.Document.GetIdentity(), before, after);
+            _output.Write(DiffTextRenderer.Render(diff));
             return ExitCode.Success;
         }
 
@@ -211,7 +214,8 @@ namespace RevitGit.Harness
             _serializer = new SnapshotJsonSerializer();
             CurrentSnapshot = snapshot ?? SnapshotFixtureFactory.Default(900, null, "G1", false);
             MetadataRepository = new FileSystemHistoryRepository(new FamilyRepositoryManager(clock));
-            Adapter = new LibGit2VersionRepository(repository.Paths.RepositoryDirectory, MetadataRepository, () => _serializer.Serialize(CurrentSnapshot));
+            Adapter = new LibGit2VersionRepository(repository.Paths.RepositoryDirectory, MetadataRepository,
+                () => _serializer.Serialize(CurrentSnapshot), _serializer.Deserialize);
         }
 
         public HarnessClock Clock { get; }
@@ -243,7 +247,7 @@ namespace RevitGit.Harness
         public VariantSummary CreateVariant(VersionId from, string name) => new CreateVariantUseCase(Adapter, Document).Execute(from, name);
         public void Switch(VariantId id) => new SwitchVariantUseCase(Adapter, Document).Execute(id);
         public VersionSummary Restore(VersionId id, string comment = null) => new RestoreVersionUseCase(Adapter, Document, Adapter, Clock).Execute(id, comment);
-        public FamilySnapshot ReadSnapshot(VersionId id) => _serializer.Deserialize(Adapter.ReadVersionFile(id, "snapshot.json"));
+        public FamilySnapshot ReadSnapshot(VersionId id) => Adapter.ReadSnapshot(Document.GetIdentity(), id);
 
         public RepositoryValidationResult Validate()
         {
@@ -394,12 +398,13 @@ namespace RevitGit.Harness
         {
             var root = NewRoot(workspace); var a = root.MetadataHistory.Versions.Values.Single().Id;
             var b = MutateAndSave(root, 2, SnapshotFixtureFactory.Default(1000, "Width / 2", "G2", true), "B");
-            var diff = new FamilyDiffEngine().Compare(root.ReadSnapshot(a), root.ReadSnapshot(b.Id));
+            var diff = new CompareSavedVersionsUseCase(root.Adapter, root.Adapter, new FamilyDiffEngine())
+                .Execute(root.Document.GetIdentity(), a, b.Id);
             ScenarioAssert.True(diff.ParameterChanges.Any(change => change.FormulaChange != null), "Formula modification must be reported.");
             ScenarioAssert.True(diff.TypeChanges.Any(change => change.Kind == ChangeKind.Added && change.Name == "1200x2100"), "Added type must be reported.");
             ScenarioAssert.True(diff.TypeChanges.Any(change => change.ValueChanges.Any()), "Width value modification must be reported.");
             ScenarioAssert.True(diff.GeometryChanged, "Geometry fingerprint modification must be reported.");
-            report.Pass("real FamilyDiffEngine reported value, formula, type and geometry changes"); report.Line(DiffTextRenderer.Render(diff).TrimEnd());
+            report.Pass("Application saved-version comparison reported value, formula, type and geometry changes"); report.Line(DiffTextRenderer.Render(diff).TrimEnd());
         }
 
         private static void Reopen(ScenarioWorkspace workspace, ScenarioReport report)

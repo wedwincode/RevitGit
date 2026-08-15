@@ -11,11 +11,12 @@ using RevitGit.Application.Abstractions;
 using RevitGit.Application.Models;
 using RevitGit.Domain.History;
 using RevitGit.Domain.Identifiers;
+using RevitGit.Domain.Snapshots;
 using HistoryVersion = RevitGit.Domain.History.Version;
 
 namespace RevitGit.Infrastructure.Git
 {
-    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore
+    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore
     {
         private const string FamilyFileName = "family.rfa";
         private const string SnapshotFileName = "snapshot.json";
@@ -25,12 +26,14 @@ namespace RevitGit.Infrastructure.Git
         private readonly string _workDirectory;
         private readonly IHistoryRepository _metadataRepository;
         private readonly Func<byte[]> _snapshotContentProvider;
+        private readonly Func<byte[], FamilySnapshot> _snapshotDeserializer;
         private PendingVersion _pending;
 
         public LibGit2VersionRepository(
             string repositoryDirectory,
             IHistoryRepository metadataRepository,
-            Func<byte[]> snapshotContentProvider)
+            Func<byte[]> snapshotContentProvider,
+            Func<byte[], FamilySnapshot> snapshotDeserializer = null)
         {
             if (string.IsNullOrWhiteSpace(repositoryDirectory))
                 throw new ArgumentException("Repository directory is required.", nameof(repositoryDirectory));
@@ -38,6 +41,7 @@ namespace RevitGit.Infrastructure.Git
             _workDirectory = Path.Combine(_repositoryDirectory, "repo");
             _metadataRepository = metadataRepository ?? throw new ArgumentNullException(nameof(metadataRepository));
             _snapshotContentProvider = snapshotContentProvider ?? throw new ArgumentNullException(nameof(snapshotContentProvider));
+            _snapshotDeserializer = snapshotDeserializer;
             CleanupAbandonedPendingDirectories();
         }
 
@@ -178,6 +182,22 @@ namespace RevitGit.Infrastructure.Git
             {
                 TryDelete(temporaryPath);
                 throw new GitStorageException("The selected version content could not be restored.", exception);
+            }
+        }
+
+        public FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            RequireIdentity(familyIdentity);
+            if (_snapshotDeserializer == null)
+                throw new GitStorageException("A snapshot reader is not configured.");
+            try
+            {
+                return _snapshotDeserializer(ReadVersionFile(versionId, SnapshotFileName));
+            }
+            catch (GitStorageException) { throw; }
+            catch (Exception exception)
+            {
+                throw new GitRepositoryCorruptedException("The stored version snapshot is invalid.", exception);
             }
         }
 

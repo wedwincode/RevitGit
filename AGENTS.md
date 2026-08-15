@@ -258,6 +258,16 @@ For History UI changes:
 6. run the manual DockablePane smoke checklist;
 7. reopen a real family and verify its persisted history.
 
+For Compare changes:
+
+1. run Diff/Application tests;
+2. run UI formatter/ViewModel tests;
+3. run all headless tests;
+4. run the Harness compare scenario;
+5. build the Revit project;
+6. manually compare current live state with history;
+7. verify comparison creates no Version and does not save the Revit document.
+
 ## Code style
 
 - favor small classes with explicit responsibility;

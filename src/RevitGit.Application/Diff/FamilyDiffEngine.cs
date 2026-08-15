@@ -34,6 +34,7 @@ namespace RevitGit.Application.Diff
             var beforeByName = IndexTypes(before.Types);
             var afterByName = IndexTypes(after.Types);
             var parameterNames = IndexParameterNames(before.Parameters, after.Parameters);
+            var parameterDataTypes = IndexParameterDataTypes(before.Parameters, after.Parameters);
             var allNames = new SortedSet<string>(beforeByName.Keys, StringComparer.Ordinal);
             allNames.UnionWith(afterByName.Keys);
 
@@ -62,7 +63,7 @@ namespace RevitGit.Application.Diff
                         ChangeKind.Modified,
                         oldType,
                         newType,
-                        CompareParameterValues(oldType.Values, newType.Values, parameterNames)));
+                        CompareParameterValues(oldType.Values, newType.Values, parameterNames, parameterDataTypes)));
                 }
             }
 
@@ -72,7 +73,8 @@ namespace RevitGit.Application.Diff
         private static IList<ParameterValueChange> CompareParameterValues(
             IReadOnlyDictionary<string, ParameterValue> before,
             IReadOnlyDictionary<string, ParameterValue> after,
-            IReadOnlyDictionary<string, string> parameterNames)
+            IReadOnlyDictionary<string, string> parameterNames,
+            IReadOnlyDictionary<string, ParameterDataType> parameterDataTypes)
         {
             var allKeys = new SortedSet<string>(before.Keys, StringComparer.Ordinal);
             allKeys.UnionWith(after.Keys);
@@ -88,17 +90,17 @@ namespace RevitGit.Application.Diff
                 if (!existed)
                 {
                     changes.Add(new ParameterValueChange(
-                        key, parameterNames[key], ChangeKind.Added, null, newValue));
+                        key, parameterNames[key], parameterDataTypes[key], ChangeKind.Added, null, newValue));
                 }
                 else if (!exists)
                 {
                     changes.Add(new ParameterValueChange(
-                        key, parameterNames[key], ChangeKind.Removed, oldValue, null));
+                        key, parameterNames[key], parameterDataTypes[key], ChangeKind.Removed, oldValue, null));
                 }
                 else if (!oldValue.Equals(newValue))
                 {
                     changes.Add(new ParameterValueChange(
-                        key, parameterNames[key], ChangeKind.Modified, oldValue, newValue));
+                        key, parameterNames[key], parameterDataTypes[key], ChangeKind.Modified, oldValue, newValue));
                 }
             }
 
@@ -197,6 +199,16 @@ namespace RevitGit.Application.Diff
                 result[parameter.StableKey] = parameter.Name;
             }
 
+            return result;
+        }
+
+        private static Dictionary<string, ParameterDataType> IndexParameterDataTypes(
+            IEnumerable<FamilyParameterSnapshot> before,
+            IEnumerable<FamilyParameterSnapshot> after)
+        {
+            var result = new Dictionary<string, ParameterDataType>(StringComparer.Ordinal);
+            foreach (var parameter in before) result[parameter.StableKey] = parameter.DataType;
+            foreach (var parameter in after) result[parameter.StableKey] = parameter.DataType;
             return result;
         }
 
