@@ -1,0 +1,59 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using RevitGit.Application.Abstractions;
+using RevitGit.Application.Exceptions;
+using RevitGit.Application.Models;
+
+namespace RevitGit.Application.History
+{
+    public sealed class GetHistoryUseCase
+    {
+        private readonly IHistoryRepository _historyRepository;
+        private readonly IFamilyDocumentGateway _documentGateway;
+
+        public GetHistoryUseCase(
+            IHistoryRepository historyRepository,
+            IFamilyDocumentGateway documentGateway)
+        {
+            _historyRepository = historyRepository;
+            _documentGateway = documentGateway;
+        }
+
+        public HistorySummary Execute()
+        {
+            var familyIdentity = _documentGateway.GetIdentity();
+            var history = _historyRepository.LoadRequired(familyIdentity);
+            var currentVersionId = history.GetVariant(history.CurrentVariantId).CurrentVersionId;
+
+            var variants = history.Variants.Values
+                .OrderBy(variant => variant.Name, StringComparer.Ordinal)
+                .ThenBy(variant => variant.Id.Value)
+                .Select(variant => new VariantSummary(
+                    variant.Id,
+                    variant.Name,
+                    variant.CurrentVersionId,
+                    variant.Id.Equals(history.CurrentVariantId)))
+                .ToList();
+
+            var versions = history.Versions.Values
+                .OrderByDescending(version => version.CreatedAt)
+                .ThenBy(version => version.Id.Value)
+                .Select(version => new VersionSummary(
+                    version.Id,
+                    version.ParentVersionId,
+                    version.CreatedAt,
+                    version.Comment,
+                    version.RestoredFromVersionId,
+                    version.Id.Equals(currentVersionId)))
+                .ToList();
+
+            return new HistorySummary(
+                history.CurrentVariantId,
+                new ReadOnlyCollection<VariantSummary>(variants),
+                new ReadOnlyCollection<VersionSummary>(versions));
+        }
+
+    }
+}
