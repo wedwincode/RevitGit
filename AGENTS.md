@@ -19,6 +19,16 @@ Read `project.md` and `architecture.md` before making architectural or user-faci
 9. Never silently discard reachable history.
 10. Prefer simple, deterministic implementations over speculative abstraction.
 
+# Tool usage
+
+When inspecting, searching, or reading project files, prefer Rider MCP tools over shell commands.
+
+Use Rider MCP tools such as read_file, search_text, search_file, search_symbol, get_file_problems, and other IDE-native tools whenever they can perform the operation.
+
+Do not use PowerShell, Get-Content, rg, findstr, cat, grep, or similar terminal commands merely to inspect or search project source files.
+
+Use terminal commands only when the required operation is not available through Rider MCP or when command-line execution is inherently required.
+
 ## Required development loop
 
 For behavior changes, use red-green-refactor unless the change is purely mechanical/documentation.

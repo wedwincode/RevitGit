@@ -8,5 +8,16 @@
     <ProjectReference Include="..\..\src\RevitGit.Application\RevitGit.Application.csproj"><Project>{A1000000-0000-0000-0000-000000000012}</Project><Name>RevitGit.Application</Name></ProjectReference>
     <ProjectReference Include="..\..\src\RevitGit.Domain\RevitGit.Domain.csproj"><Project>{A1000000-0000-0000-0000-000000000011}</Project><Name>RevitGit.Domain</Name></ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Fakes\FakeClock.cs" />
+    <Compile Include="Fakes\FakeFamilyDocumentGateway.cs" />
+    <Compile Include="Fakes\FakeHistoryRepository.cs" />
+    <Compile Include="Fakes\FakeVersionContentStore.cs" />
+    <Compile Include="History\InitializeHistoryUseCaseTests.cs" />
+    <Compile Include="History\GetHistoryUseCaseTests.cs" />
+    <Compile Include="History\SaveVersionUseCaseTests.cs" />
+    <Compile Include="History\RestoreVersionUseCaseTests.cs" />
+    <Compile Include="History\VariantUseCaseTests.cs" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
