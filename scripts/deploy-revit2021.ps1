@@ -15,9 +15,16 @@ if ([string]::IsNullOrWhiteSpace($BuildOutput)) {
     $BuildOutput = Join-Path $repositoryRoot "src\RevitGit.Revit2021\bin\$Configuration"
 }
 
-$sourceAssembly = Join-Path $BuildOutput "RevitGit.Revit2021.dll"
-if (-not (Test-Path -LiteralPath $sourceAssembly -PathType Leaf)) {
-    throw "RevitGit.Revit2021.dll was not found. Build the $Configuration configuration first: $sourceAssembly"
+$runtimeAssemblyNames = @(
+    "RevitGit.Revit2021.dll",
+    "RevitGit.Domain.dll"
+)
+
+foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
+    $sourceAssembly = Join-Path $BuildOutput $runtimeAssemblyName
+    if (-not (Test-Path -LiteralPath $sourceAssembly -PathType Leaf)) {
+        throw "$runtimeAssemblyName was not found. Build the $Configuration configuration first: $sourceAssembly"
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($Destination)) {
@@ -39,7 +46,12 @@ $deployedAssembly = Join-Path $pluginDirectory "RevitGit.Revit2021.dll"
 $manifestPath = Join-Path $destinationRoot "RevitGit.addin"
 
 New-Item -ItemType Directory -Path $pluginDirectory -Force | Out-Null
-Copy-Item -LiteralPath $sourceAssembly -Destination $deployedAssembly -Force
+foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
+    Copy-Item `
+        -LiteralPath (Join-Path $BuildOutput $runtimeAssemblyName) `
+        -Destination (Join-Path $pluginDirectory $runtimeAssemblyName) `
+        -Force
+}
 
 $escapedAssemblyPath = [System.Security.SecurityElement]::Escape($deployedAssembly)
 $manifest = (Get-Content -LiteralPath $templatePath -Raw).Replace("__REVITGIT_ASSEMBLY_PATH__", $escapedAssemblyPath)

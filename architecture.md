@@ -433,6 +433,14 @@ Phases:
 - no detailed geometry diff;
 - optionally compute a deterministic geometry fingerprint and show `Geometry changed`.
 
+Epic 9 implements the Phase 1 fingerprint in the Revit 2021 adapter. It gathers
+geometry with fixed fine-detail options, recursively applies `GeometryInstance`
+transforms, canonicalizes tessellated points into millimetres at schema precision,
+sorts neutral descriptors, and hashes them with SHA-256. The extractor observes only
+the current document geometry state and never switches `FamilyManager.CurrentType`;
+per-type geometry regeneration is deferred. Parameter values for every family type
+are still read directly through the read-only `FamilyType.As*` API.
+
 ### Phase 2
 
 - element-level matching for known family form classes;

@@ -63,12 +63,15 @@ try {
 
     New-Item -ItemType Directory -Path $buildOutput -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $buildOutput "RevitGit.Revit2021.dll") -Value "test assembly"
+    Set-Content -LiteralPath (Join-Path $buildOutput "RevitGit.Domain.dll") -Value "test domain assembly"
     & $deployScript -Configuration Debug -Destination $destination -BuildOutput $buildOutput
 
     $manifestPath = Join-Path $destination "RevitGit.addin"
     $deployedAssembly = Join-Path $destination "RevitGit\RevitGit.Revit2021.dll"
+    $deployedDomainAssembly = Join-Path $destination "RevitGit\RevitGit.Domain.dll"
     Assert-True (Test-Path -LiteralPath $manifestPath) "Deploy did not create the manifest."
     Assert-True (Test-Path -LiteralPath $deployedAssembly) "Deploy did not copy the add-in assembly."
+    Assert-True (Test-Path -LiteralPath $deployedDomainAssembly) "Deploy did not copy the required Domain assembly."
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $destination "RevitGit\RevitAPI.dll"))) "Deploy copied RevitAPI.dll."
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $destination "RevitGit\RevitAPIUI.dll"))) "Deploy copied RevitAPIUI.dll."
 

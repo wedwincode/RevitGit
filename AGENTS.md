@@ -227,6 +227,17 @@ For Revit-specific changes:
 
 Manual Revit testing never replaces headless verification.
 
+For Revit snapshot extraction changes:
+
+1. run headless tests first;
+2. run the Harness smoke scenarios;
+3. build the Revit project with `Revit2021InstallDir`;
+4. run manual extraction against a real fixture `.rfa`;
+5. verify two unchanged extractions are equal and have the same geometry fingerprint;
+6. verify the real `Revit -> Snapshot -> Diff` path after a controlled family change.
+
+Do not replace real Revit snapshot smoke testing with a mocked `Document`.
+
 ## Code style
 
 - favor small classes with explicit responsibility;

@@ -4,7 +4,7 @@ Offline version history for Autodesk Revit family development.
 
 ## Status
 
-Milestone 2 development: the minimal Revit 2021 add-in skeleton is available.
+Milestone 2 development: the Revit 2021 add-in skeleton and family snapshot extractor are available.
 
 Target: Autodesk Revit 2021 on Windows.
 
@@ -193,7 +193,7 @@ The default destination is `%APPDATA%\Autodesk\Revit\Addins\2021`. A safe custom
     -Destination C:\Temp\RevitAddinsTest
 ```
 
-The deployment contains only `RevitGit.addin` and `RevitGit\RevitGit.Revit2021.dll`. It does not contain Autodesk API assemblies or Milestone 1 Git/native dependencies.
+The deployment contains only `RevitGit.addin`, `RevitGit\RevitGit.Revit2021.dll`, and the required neutral `RevitGit\RevitGit.Domain.dll`. It does not contain Autodesk API assemblies or Milestone 1 Git/native dependencies.
 
 ### Remove
 
@@ -222,6 +222,35 @@ The optional helper uses an explicit parameter, environment/local override, then
 ### Important
 
 `Revit2021InstallDir` is a developer build/debug setting, not an end-user plugin setting. Deployment always targets the Revit per-user Addins directory regardless of the drive containing `Revit.exe`. At runtime the add-in neither resolves the Revit installation nor searches for or copies Revit API assemblies; the Revit host supplies them.
+
+## Snapshot extraction
+
+`RevitFamilySnapshotExtractor` converts the active Revit 2021 family document directly into the schema 1 neutral `FamilySnapshot`. The extractor is synchronous and read-only: it creates no transaction, does not save the document, does not switch `FamilyManager.CurrentType`, and does not access history, Git, or the filesystem.
+
+The v1 snapshot contains:
+
+- family name from `Document.OwnerFamily.Name`;
+- family category display name from `Document.OwnerFamily.FamilyCategory.Name`;
+- family parameters with stable key, display name, data type, instance/type scope, and formula;
+- every family type and its meaningful type-parameter values;
+- typed string, integer, double, boolean, null, material, and named element-reference values;
+- a deterministic SHA-256 geometry fingerprint.
+
+Revit 2021 `Definition.ParameterType` values are mapped into the neutral Domain enum. Shared parameter GUIDs and built-in parameter identities are used for stable keys when available. Unsupported parameter types remain visible as `Unknown`; unsupported double values are omitted rather than leaking Revit internal units.
+
+Length, area, volume, and angle values are converted with Revit `UnitUtils` into millimetres, square millimetres, cubic millimetres, and degrees. Numbers remain unitless. Domain then applies the schema 1 six-decimal numeric policy. Revit display units and active-view formatting are never used.
+
+The `Проверка` diagnostic command extracts the active `.rfa` twice, reports a short summary and timing, and verifies repeated snapshot equality. Project documents are reported as not applicable; no snapshot file is written.
+
+### Current snapshot limitations
+
+- geometry is fingerprinted only for the current document geometry state; geometry is not regenerated per Family Type;
+- geometry fingerprinting reports changed/not changed, not detailed geometric differences;
+- reference planes, dimensions, and constraints are not part of schema 1;
+- nested families have no separate semantic list, although visible nested geometry may affect the fingerprint;
+- category display names and some system parameter names may vary with the Revit language pack;
+- unsupported numeric parameter dimensions are represented as `Unknown` without a raw internal-unit value;
+- parameter and family-type rename detection is not implemented.
 
 ## Documentation
 

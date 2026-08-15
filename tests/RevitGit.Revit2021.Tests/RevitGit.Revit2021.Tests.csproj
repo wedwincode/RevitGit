@@ -1,0 +1,45 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildProjectDirectory)\..\..\Directory.Build.props.user" Condition="Exists('$(MSBuildProjectDirectory)\..\..\Directory.Build.props.user')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A1000000-0000-0000-0000-000000000026}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>RevitGit.Revit2021.Tests</RootNamespace>
+    <AssemblyName>RevitGit.Revit2021.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <IsTestProject>true</IsTestProject>
+    <Revit2021InstallDir Condition=" '$(Revit2021InstallDir)' == '' ">C:\Program Files\Autodesk\Revit 2021</Revit2021InstallDir>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget><Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType><Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath><DefineConstants>TRACE</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget><Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RevitGit.Domain\RevitGit.Domain.csproj"><Project>{A1000000-0000-0000-0000-000000000011}</Project><Name>RevitGit.Domain</Name></ProjectReference>
+    <ProjectReference Include="..\..\src\RevitGit.Revit2021\RevitGit.Revit2021.csproj"><Project>{A1000000-0000-0000-0000-000000000014}</Project><Name>RevitGit.Revit2021</Name></ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CanonicalGeometryFingerprintTests.cs" />
+    <Compile Include="RevitParameterDataTypeMapperTests.cs" />
+    <Compile Include="RevitParameterValuePolicyTests.cs" />
+    <Compile Include="RevitUnitNormalizerTests.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
