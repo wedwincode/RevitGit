@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Family History</Name>
+    <Assembly>__REVITGIT_ASSEMBLY_PATH__</Assembly>
+    <AddInId>6D8E5C3B-7E34-4C8A-9A2A-6F9D33B5A721</AddInId>
+    <FullClassName>RevitGit.Revit2021.RevitGitApplication</FullClassName>
+    <VendorId>RVGH</VendorId>
+  </AddIn>
+</RevitAddIns>

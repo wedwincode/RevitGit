@@ -217,6 +217,16 @@ Keep `.addin` manifests generated/configurable for local development and packagi
 
 Revit smoke tests are separate from the default headless test loop.
 
+For Revit-specific changes:
+
+1. run headless tests;
+2. run the Harness smoke scenarios;
+3. build the Revit project using `Revit2021InstallDir`;
+4. deploy explicitly;
+5. run the manual Revit smoke checklist.
+
+Manual Revit testing never replaces headless verification.
+
 ## Code style
 
 - favor small classes with explicit responsibility;

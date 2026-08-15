@@ -1,11 +1,66 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup><Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration><Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform><ProjectGuid>{A1000000-0000-0000-0000-000000000014}</ProjectGuid><OutputType>Library</OutputType><RootNamespace>RevitGit.Revit2021</RootNamespace><AssemblyName>RevitGit.Revit2021</AssemblyName><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><LangVersion>7.3</LangVersion></PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' "><DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize><OutputPath>bin\Debug\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants></PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' "><DebugType>pdbonly</DebugType><Optimize>true</Optimize><OutputPath>bin\Release\</OutputPath><DefineConstants>TRACE</DefineConstants></PropertyGroup>
-  <ItemGroup><Reference Include="System" /><Reference Include="System.Core" /></ItemGroup>
+  <Import Project="$(MSBuildProjectDirectory)\..\..\Directory.Build.props.user" Condition="Exists('$(MSBuildProjectDirectory)\..\..\Directory.Build.props.user')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A1000000-0000-0000-0000-000000000014}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>RevitGit.Revit2021</RootNamespace>
+    <AssemblyName>RevitGit.Revit2021</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <Revit2021InstallDir Condition=" '$(Revit2021InstallDir)' == '' ">C:\Program Files\Autodesk\Revit 2021</Revit2021InstallDir>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RevitGit.Application\RevitGit.Application.csproj"><Project>{A1000000-0000-0000-0000-000000000012}</Project><Name>RevitGit.Application</Name></ProjectReference>
-    <ProjectReference Include="..\RevitGit.Domain\RevitGit.Domain.csproj"><Project>{A1000000-0000-0000-0000-000000000011}</Project><Name>RevitGit.Domain</Name></ProjectReference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="RevitAPI">
+      <HintPath>$(Revit2021InstallDir)\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(Revit2021InstallDir)\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DiagnosticCommand.cs" />
+    <Compile Include="RevitGitApplication.cs" />
+  </ItemGroup>
+  <Target Name="ValidateRevit2021Install" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(Revit2021InstallDir)\RevitAPI.dll')"
+           Text="Revit 2021 API assemblies were not found. Resolved Revit2021InstallDir: $(Revit2021InstallDir). Install Revit 2021 or override Revit2021InstallDir." />
+    <Error Condition="!Exists('$(Revit2021InstallDir)\RevitAPIUI.dll')"
+           Text="Revit 2021 API assemblies were not found. Resolved Revit2021InstallDir: $(Revit2021InstallDir). Install Revit 2021 or override Revit2021InstallDir." />
+    <Error Condition="!Exists('$(Revit2021InstallDir)\Revit.exe')"
+           Text="Revit 2021 executable was not found beside the API assemblies. Resolved Revit2021InstallDir: $(Revit2021InstallDir). Verify that the directory is a Revit 2021 installation." />
+    <GetAssemblyIdentity AssemblyFiles="$(Revit2021InstallDir)\RevitAPI.dll">
+      <Output TaskParameter="Assemblies" ItemName="_RevitApiAssemblyIdentity" />
+    </GetAssemblyIdentity>
+    <GetAssemblyIdentity AssemblyFiles="$(Revit2021InstallDir)\RevitAPIUI.dll">
+      <Output TaskParameter="Assemblies" ItemName="_RevitApiUiAssemblyIdentity" />
+    </GetAssemblyIdentity>
+    <Error Condition=" '%(_RevitApiAssemblyIdentity.Version)' != '21.0.0.0' "
+           Text="The selected RevitAPI.dll is not the Revit 2021 API. Found assembly version %(_RevitApiAssemblyIdentity.Version); expected 21.0.0.0. Resolved Revit2021InstallDir: $(Revit2021InstallDir)." />
+    <Error Condition=" '%(_RevitApiUiAssemblyIdentity.Version)' != '21.0.0.0' "
+           Text="The selected RevitAPIUI.dll is not the Revit 2021 API. Found assembly version %(_RevitApiUiAssemblyIdentity.Version); expected 21.0.0.0. Resolved Revit2021InstallDir: $(Revit2021InstallDir)." />
+  </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

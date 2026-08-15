@@ -4,7 +4,7 @@ Offline version history for Autodesk Revit family development.
 
 ## Status
 
-Pre-development specification / architecture stage.
+Milestone 2 development: the minimal Revit 2021 add-in skeleton is available.
 
 Target: Autodesk Revit 2021 on Windows.
 
@@ -137,6 +137,91 @@ Two build paths are expected:
 2. Revit 2021 build/smoke test — requires Revit 2021 API assemblies from a local installation.
 
 Autodesk DLLs must not be committed to this repository.
+
+## Revit 2021 development prerequisites
+
+`RevitGit.Revit2021` targets .NET Framework 4.8/x64 and compiles against `RevitAPI.dll` and `RevitAPIUI.dll` from a local Autodesk Revit 2021 installation. The solution configurations remain `Any CPU`; only the Revit-hosted project sets `PlatformTarget=x64`. These Autodesk assemblies are build-time references only: they are not copied to the output or deployed with the add-in.
+
+### Standard installation
+
+When no override is supplied, the Revit project uses this fallback:
+
+```text
+C:\Program Files\Autodesk\Revit 2021
+```
+
+### Non-standard installation
+
+Set the MSBuild property explicitly when Revit is installed elsewhere:
+
+```powershell
+msbuild src\RevitGit.Revit2021\RevitGit.Revit2021.csproj `
+    /t:Restore,Build `
+    /p:Configuration=Debug `
+    /p:Revit2021InstallDir="D:\Autodesk\Revit 2021"
+```
+
+Alternatively, define the environment variable `Revit2021InstallDir`, set the property in Rider's MSBuild settings, or create the ignored developer-local file `Directory.Build.props.user`:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <Revit2021InstallDir>D:\Autodesk\Revit 2021</Revit2021InstallDir>
+  </PropertyGroup>
+</Project>
+```
+
+An explicit `/p:Revit2021InstallDir=...` global property has priority. If the resolved directory does not contain `RevitAPI.dll`, `RevitAPIUI.dll`, and `Revit.exe`, the Revit project fails with a message that includes the resolved path. Headless projects and tests do not require Revit.
+
+### Build
+
+Use Rider's build action or Visual Studio 2022 MSBuild. The ordinary build never deploys the add-in and never modifies `%APPDATA%`.
+
+### Deploy
+
+Close Revit, build the desired configuration, and deploy explicitly:
+
+```powershell
+.\scripts\deploy-revit2021.ps1 -Configuration Debug
+```
+
+The default destination is `%APPDATA%\Autodesk\Revit\Addins\2021`. A safe custom destination is supported for verification:
+
+```powershell
+.\scripts\deploy-revit2021.ps1 `
+    -Configuration Debug `
+    -Destination C:\Temp\RevitAddinsTest
+```
+
+The deployment contains only `RevitGit.addin` and `RevitGit\RevitGit.Revit2021.dll`. It does not contain Autodesk API assemblies or Milestone 1 Git/native dependencies.
+
+### Remove
+
+```powershell
+.\scripts\remove-revit2021.ps1
+```
+
+The script removes only the `RevitGit.addin` manifest and `RevitGit` plugin directory. It also accepts `-Destination` for a custom location.
+
+### Start/debug Revit
+
+For a Rider Run/Debug configuration set the executable to:
+
+```text
+<Revit2021InstallDir>\Revit.exe
+```
+
+Do not commit machine-specific `.idea` run configurations. After deploying, Revit discovers `RevitGit.addin` during startup; open the `История семейств` tab and choose `Проверка`. Revit must be closed before rebuilding or replacing a loaded DLL. There is no hot reload.
+
+The optional helper uses an explicit parameter, environment/local override, then the standard fallback:
+
+```powershell
+.\scripts\start-revit2021.ps1 -Revit2021InstallDir "D:\Autodesk\Revit 2021"
+```
+
+### Important
+
+`Revit2021InstallDir` is a developer build/debug setting, not an end-user plugin setting. Deployment always targets the Revit per-user Addins directory regardless of the drive containing `Revit.exe`. At runtime the add-in neither resolves the Revit installation nor searches for or copies Revit API assemblies; the Revit host supplies them.
 
 ## Documentation
 
