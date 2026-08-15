@@ -330,7 +330,7 @@ Example:
 
 ```json
 {
-  "formatVersion": 1,
+  "schemaVersion": 1,
   "family": {
     "name": "Door",
     "category": "Doors"
@@ -349,6 +349,19 @@ Rules:
 - distinguish null / absent / empty;
 - backward-compatible readers when snapshot schema changes;
 - golden-file tests for serialization.
+
+For schema 1, parameter identity is a neutral, case-sensitive stable string key. The
+Revit adapter will build it from the strongest identity available (shared GUID,
+built-in identity, normalized definition identity, then a fallback composite key),
+while the snapshot model remains independent of Revit types. Type values are keyed
+by this stable key rather than by display name.
+
+Numeric values use canonical human-scale units before entering the snapshot:
+millimetres for length, square millimetres for area, cubic millimetres for volume,
+degrees for angles, and unitless values for numbers. Schema 1 rounds all finite
+floating-point values to six decimal places with midpoint rounding away from zero;
+non-finite values are invalid. This normalization is centralized in the Domain
+snapshot model.
 
 ## 14. Diff engine
 
@@ -538,4 +551,3 @@ FamilyHistory.Revit2022
 or by multi-targeting/adapters when practical.
 
 Do not let Revit 2021-specific API types leak into Domain/Application public APIs.
-

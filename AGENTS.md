@@ -29,6 +29,16 @@ Do not use PowerShell, Get-Content, rg, findstr, cat, grep, or similar terminal 
 
 Use terminal commands only when the required operation is not available through Rider MCP or when command-line execution is inherently required.
 
+# .NET Framework build
+
+This solution targets .NET Framework 4.8.
+
+Do not use `dotnet build` or `dotnet run` for classic .NET Framework projects.
+
+Prefer Rider MCP build tools such as `build_solution_start` and `build_solution_state`.
+
+If command-line MSBuild is required, use the MSBuild installation configured in Rider or a Visual Studio 2022 / Build Tools MSBuild.exe. Do not search for arbitrary Visual Studio executables unless necessary.
+
 ## Required development loop
 
 For behavior changes, use red-green-refactor unless the change is purely mechanical/documentation.
@@ -68,6 +78,18 @@ Avoid:
 - tests that require Revit for pure domain/application behavior.
 
 Every bug fix should get a regression test when practical.
+
+# Test execution
+
+This solution targets .NET Framework 4.8.
+
+Prefer Rider MCP and Rider test infrastructure for discovering and running tests.
+
+Use Rider tools such as findTests and execute_run_configuration when possible.
+
+Do not search the filesystem for vstest.console.exe, testhost.exe, MSBuild.exe, or Visual Studio installation paths unless Rider MCP cannot perform the required operation.
+
+Do not use recursive PowerShell searches under Program Files or the NuGet package cache to locate test runners.
 
 ## Architecture rules
 

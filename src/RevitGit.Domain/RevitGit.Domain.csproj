@@ -36,6 +36,15 @@
     <Compile Include="History\Version.cs" />
     <Compile Include="Identifiers\VariantId.cs" />
     <Compile Include="Identifiers\VersionId.cs" />
+    <Compile Include="Snapshots\FamilyParameterSnapshot.cs" />
+    <Compile Include="Snapshots\FamilySnapshot.cs" />
+    <Compile Include="Snapshots\FamilyTypeSnapshot.cs" />
+    <Compile Include="Snapshots\ParameterDataType.cs" />
+    <Compile Include="Snapshots\ParameterScope.cs" />
+    <Compile Include="Snapshots\ParameterValue.cs" />
+    <Compile Include="Snapshots\ParameterValueKind.cs" />
+    <Compile Include="Snapshots\SnapshotNumericPolicy.cs" />
+    <Compile Include="Snapshots\SnapshotSchema.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

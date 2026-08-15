@@ -16,6 +16,10 @@
     <Compile Include="History\RestoreTests.cs" />
     <Compile Include="History\VariantTests.cs" />
     <Compile Include="Identifiers\IdentifierTests.cs" />
+    <Compile Include="Snapshots\FamilyParameterSnapshotTests.cs" />
+    <Compile Include="Snapshots\FamilySnapshotTests.cs" />
+    <Compile Include="Snapshots\FamilyTypeSnapshotTests.cs" />
+    <Compile Include="Snapshots\ParameterValueTests.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
