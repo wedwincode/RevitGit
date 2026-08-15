@@ -21,7 +21,7 @@ namespace RevitGit.UI.History
             CurrentLabel = summary.IsCurrent ? "Текущая" : null;
             IsRestored = summary.RestoredFromVersionId != null;
             RestoredFromText = summary.RestoredFromCreatedAt.HasValue
-                ? "Восстановлено из версии от " + Format(summary.RestoredFromCreatedAt.Value)
+                ? "Восстановленная версия\nИсточник: " + Format(summary.RestoredFromCreatedAt.Value)
                 : IsRestored ? "Восстановленная версия" : null;
         }
 

@@ -30,6 +30,7 @@
     <Compile Include="History\HistoryViewModel.cs" />
     <Compile Include="History\IHistoryRefreshRequest.cs" />
     <Compile Include="History\IHistoryCompareRequest.cs" />
+    <Compile Include="History\IHistoryRestoreRequest.cs" />
     <Compile Include="History\HistoryView.xaml.cs"><DependentUpon>HistoryView.xaml</DependentUpon></Compile>
     <Compile Include="SaveVersion\SaveVersionDialog.xaml.cs">
       <DependentUpon>SaveVersionDialog.xaml</DependentUpon>

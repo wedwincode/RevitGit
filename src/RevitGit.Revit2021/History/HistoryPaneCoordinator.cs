@@ -7,21 +7,23 @@ using RevitGit.Domain.Identifiers;
 
 namespace RevitGit.Revit2021.History
 {
-    internal sealed class HistoryPaneCoordinator : IDisposable, IHistoryCompareRequest
+    internal sealed class HistoryPaneCoordinator : IDisposable, IHistoryCompareRequest, IHistoryRestoreRequest
     {
         private readonly UIControlledApplication _application;
         private readonly HistoryViewModel _viewModel;
         private readonly RevitExternalEventDispatcher _dispatcher;
+        private bool _isRestoring;
 
         public HistoryPaneCoordinator(UIControlledApplication application)
         {
             _application = application ?? throw new ArgumentNullException(nameof(application));
             var bridge = new HistoryRefreshRequestBridge();
-            _viewModel = new HistoryViewModel(bridge, bridge);
-            var handler = new RefreshHistoryExternalEventHandler(_viewModel);
+            _viewModel = new HistoryViewModel(bridge, bridge, bridge);
+            var handler = new RefreshHistoryExternalEventHandler(_viewModel, RestoreCompleted);
             _dispatcher = new RevitExternalEventDispatcher(handler);
             bridge.Attach(_dispatcher);
             bridge.AttachCompare(this);
+            bridge.AttachRestore(this);
 
             var provider = new HistoryDockablePaneProvider(new HistoryView(_viewModel));
             _application.RegisterDockablePane(HistoryPaneIds.PaneId, "История семейства", provider);
@@ -57,6 +59,14 @@ namespace RevitGit.Revit2021.History
             ((RefreshHistoryExternalEventHandler)_dispatcher.Handler).CompareSaved(sourceVersionId, targetVersionId);
         }
 
+        public void RequestRestore(VersionId sourceVersionId)
+        {
+            if (_isRestoring) return;
+            _isRestoring = true;
+            ((RefreshHistoryExternalEventHandler)_dispatcher.Handler).QueueRestore(sourceVersionId);
+            _dispatcher.Raise();
+        }
+
         public void Dispose()
         {
             _application.ViewActivated -= OnViewActivated;
@@ -65,9 +75,14 @@ namespace RevitGit.Revit2021.History
             _dispatcher.Dispose();
         }
 
-        private void OnViewActivated(object sender, ViewActivatedEventArgs args) => RequestRefresh();
-        private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args) => RequestRefresh();
-        private void OnDocumentClosed(object sender, DocumentClosedEventArgs args) => RequestRefresh();
+        private void OnViewActivated(object sender, ViewActivatedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
+        private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
+        private void OnDocumentClosed(object sender, DocumentClosedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
+
+        private void RestoreCompleted()
+        {
+            _isRestoring = false;
+        }
 
         private void RequestRefresh()
         {

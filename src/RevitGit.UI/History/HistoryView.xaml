@@ -81,9 +81,11 @@
                         <TextBlock Margin="0,7,0,0" FontWeight="SemiBold" Text="{Binding SelectedVersion.CurrentLabel}" />
                         <TextBlock Margin="0,7,0,0" Text="{Binding SelectedVersion.RestoredFromText}" TextWrapping="Wrap" />
                         <WrapPanel Margin="0,12,0,0">
+                            <Button Margin="0,0,8,6" Padding="10,5" Command="{Binding RestoreCommand}" Content="Восстановить" ToolTip="{Binding RestoreToolTip}" />
                             <Button Margin="0,0,8,6" Padding="10,5" Command="{Binding CompareWithCurrentCommand}" Content="Сравнить с текущей" />
                             <Button Margin="0,0,0,6" Padding="10,5" Command="{Binding ChooseOtherVersionCommand}" Content="Сравнить с другой версией" />
                         </WrapPanel>
+                        <TextBlock Margin="0,5,0,0" Text="{Binding RestoreStatusMessage}" TextWrapping="Wrap" />
                         <StackPanel Margin="0,8,0,0">
                             <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsChoosingTarget}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
                             <TextBlock Margin="0,0,0,5" Text="Выберите вторую версию" />

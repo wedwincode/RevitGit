@@ -29,7 +29,7 @@ namespace RevitGit.Harness.Tests
         [Fact]
         public void ScenarioRegistry_ContainsEveryEpic7Scenario()
         {
-            var expected = new[] { "linear-history", "branching", "switch-variant", "restore", "restore-in-variant", "compare", "reopen", "move-repository", "binary-roundtrip", "integrity", "many-versions", "topology-mismatch" };
+            var expected = new[] { "linear-history", "branching", "switch-variant", "restore", "restore-in-variant", "restore-cross-variant", "compare", "reopen", "move-repository", "binary-roundtrip", "integrity", "many-versions", "topology-mismatch" };
             Assert.Equal(expected, ScenarioRegistry.Names.ToArray());
         }
 

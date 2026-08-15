@@ -90,7 +90,7 @@ namespace RevitGit.UI.Tests.History
             viewModel.ShowHistory("Door.rfa", "Основной", new[] { restored });
 
             Assert.True(viewModel.SelectedVersion.IsRestored);
-            Assert.Equal("Восстановлено из версии от 14.08.2026 10:15", viewModel.SelectedVersion.RestoredFromText);
+            Assert.Equal("Восстановленная версия\nИсточник: 14.08.2026 10:15", viewModel.SelectedVersion.RestoredFromText);
         }
 
         [Fact]
@@ -216,6 +216,46 @@ namespace RevitGit.UI.Tests.History
             Assert.Equal(source.Id, viewModel.SelectedVersion.Id);
         }
 
+        [Fact]
+        public void RestoreIsEnabledOnlyForHistoricalVersionAndBusyPreventsOverlap()
+        {
+            var request = new RestoreRequest();
+            var historical = Summary(FirstTime, "A");
+            var current = Summary(FirstTime.AddHours(1), "B", true, parent: historical.Id);
+            var viewModel = new HistoryViewModel(new RefreshRequest(), null, request);
+            viewModel.ShowHistory("Door.rfa", "Основной", new[] { current, historical });
+
+            Assert.False(viewModel.RestoreCommand.CanExecute(null));
+            viewModel.SelectedVersion = viewModel.Versions[1];
+            Assert.True(viewModel.RestoreCommand.CanExecute(null));
+            viewModel.RestoreCommand.Execute(null);
+
+            Assert.Equal(historical.Id, request.Source);
+            Assert.True(viewModel.IsBusy);
+            Assert.Equal("Восстановление…", viewModel.RestoreStatusMessage);
+            Assert.False(viewModel.RestoreCommand.CanExecute(null));
+        }
+
+        [Fact]
+        public void RestoreCancelAndFailureKeepHistoryAvailable()
+        {
+            var request = new RestoreRequest();
+            var historical = Summary(FirstTime, "A");
+            var current = Summary(FirstTime.AddHours(1), "B", true);
+            var viewModel = new HistoryViewModel(new RefreshRequest(), null, request);
+            viewModel.ShowHistory("Door.rfa", "Основной", new[] { current, historical });
+            viewModel.SelectedVersion = viewModel.Versions[1];
+            viewModel.RestoreCommand.Execute(null);
+
+            viewModel.ShowRestoreCancelled();
+            Assert.False(viewModel.IsBusy);
+            Assert.Equal(historical.Id, viewModel.SelectedVersion.Id);
+            viewModel.RestoreCommand.Execute(null);
+            viewModel.ShowRestoreError("Не удалось восстановить версию.");
+            Assert.Equal(HistoryPaneState.Ready, viewModel.State);
+            Assert.Equal("Не удалось восстановить версию.", viewModel.RestoreStatusMessage);
+        }
+
         private static HistoryViewModel CreateViewModel() => new HistoryViewModel(new RefreshRequest());
 
         private static VersionSummary Summary(
@@ -243,6 +283,12 @@ namespace RevitGit.UI.Tests.History
             public void RequestCompareWithCurrent(VersionId sourceVersionId) { CurrentSource = sourceVersionId; }
             public void RequestCompareSaved(VersionId sourceVersionId, VersionId targetVersionId)
             { SavedSource = sourceVersionId; SavedTarget = targetVersionId; }
+        }
+
+        private sealed class RestoreRequest : IHistoryRestoreRequest
+        {
+            public VersionId Source { get; private set; }
+            public void RequestRestore(VersionId sourceVersionId) { Source = sourceVersionId; }
         }
     }
 }

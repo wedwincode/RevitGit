@@ -69,6 +69,17 @@ namespace RevitGit.Revit2021.Composition
                 .Execute(new FamilyIdentity(familyPath), before, current);
         }
 
+        public static RestoreVersionUseCase CreateRestoreVersionUseCase(Document document)
+        {
+            var timings = new SaveVersionTimings();
+            var clock = new SystemClock();
+            var gateway = new RevitFamilyDocumentGateway(document, timings);
+            var store = new LazyFamilyHistoryStore(document.PathName, new FamilyRepositoryManager(clock),
+                new RevitFamilySnapshotProvider(document, new RevitFamilySnapshotExtractor(), timings),
+                new SnapshotJsonSerializer());
+            return new RestoreVersionUseCase(store, gateway, store, clock);
+        }
+
         private static LazyFamilyHistoryStore CreateReadStore(string familyPath)
         {
             var clock = new SystemClock();

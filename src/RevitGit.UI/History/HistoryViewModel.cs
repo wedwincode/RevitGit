@@ -16,6 +16,7 @@ namespace RevitGit.UI.History
 
         private readonly IHistoryRefreshRequest _refreshRequest;
         private readonly IHistoryCompareRequest _compareRequest;
+        private readonly IHistoryRestoreRequest _restoreRequest;
         private HistoryPaneState _state;
         private string _statusMessage;
         private string _familyFileName;
@@ -31,13 +32,15 @@ namespace RevitGit.UI.History
         private readonly RelayCommand _compareWithCurrentCommand;
         private readonly RelayCommand _chooseOtherVersionCommand;
         private readonly RelayCommand _confirmSavedComparisonCommand;
+        private readonly RelayCommand _restoreCommand;
 
-        public HistoryViewModel(IHistoryRefreshRequest refreshRequest) : this(refreshRequest, null) { }
+        public HistoryViewModel(IHistoryRefreshRequest refreshRequest) : this(refreshRequest, null, null) { }
 
-        public HistoryViewModel(IHistoryRefreshRequest refreshRequest, IHistoryCompareRequest compareRequest)
+        public HistoryViewModel(IHistoryRefreshRequest refreshRequest, IHistoryCompareRequest compareRequest, IHistoryRestoreRequest restoreRequest = null)
         {
             _refreshRequest = refreshRequest ?? throw new ArgumentNullException(nameof(refreshRequest));
             _compareRequest = compareRequest;
+            _restoreRequest = restoreRequest;
             _versions = EmptyVersions;
             _state = HistoryPaneState.NoDocument;
             _statusMessage = MessageFor(HistoryPaneState.NoDocument);
@@ -50,6 +53,8 @@ namespace RevitGit.UI.History
             ChooseOtherVersionCommand = _chooseOtherVersionCommand;
             ConfirmSavedComparisonCommand = _confirmSavedComparisonCommand;
             BackToHistoryCommand = new RelayCommand(BackToHistory);
+            _restoreCommand = new RelayCommand(Restore, CanRestore);
+            RestoreCommand = _restoreCommand;
         }
 
         public HistoryPaneState State { get => _state; private set => SetProperty(ref _state, value); }
@@ -61,7 +66,14 @@ namespace RevitGit.UI.History
         public HistoryVersionItemViewModel SelectedVersion
         {
             get => _selectedVersion;
-            set { if (SetProperty(ref _selectedVersion, value)) RaiseCompareCanExecuteChanged(); }
+            set
+            {
+                if (SetProperty(ref _selectedVersion, value))
+                {
+                    OnPropertyChanged(nameof(RestoreToolTip));
+                    RaiseActionCanExecuteChanged();
+                }
+            }
         }
 
         public HistoryVersionItemViewModel SelectedComparisonTarget
@@ -70,7 +82,7 @@ namespace RevitGit.UI.History
             set { if (SetProperty(ref _selectedComparisonTarget, value)) _confirmSavedComparisonCommand.RaiseCanExecuteChanged(); }
         }
 
-        public bool IsBusy { get => _isBusy; private set { if (SetProperty(ref _isBusy, value)) RaiseCompareCanExecuteChanged(); } }
+        public bool IsBusy { get => _isBusy; private set { if (SetProperty(ref _isBusy, value)) RaiseActionCanExecuteChanged(); } }
         public bool IsComparePage { get => _isComparePage; private set { if (SetProperty(ref _isComparePage, value)) OnPropertyChanged(nameof(IsHistoryPage)); } }
         public bool IsHistoryPage => !IsComparePage;
         public bool IsChoosingTarget { get => _isChoosingTarget; private set => SetProperty(ref _isChoosingTarget, value); }
@@ -82,6 +94,11 @@ namespace RevitGit.UI.History
         public ICommand ChooseOtherVersionCommand { get; }
         public ICommand ConfirmSavedComparisonCommand { get; }
         public ICommand BackToHistoryCommand { get; }
+        public ICommand RestoreCommand { get; }
+        public string RestoreStatusMessage { get; private set; }
+        public string RestoreToolTip => SelectedVersion != null && SelectedVersion.IsCurrent
+            ? "Эта версия уже текущая."
+            : null;
 
         public void BeginRefresh()
         {
@@ -131,6 +148,8 @@ namespace RevitGit.UI.History
             IsComparePage = false;
             IsChoosingTarget = false;
             IsBusy = false;
+            RestoreStatusMessage = null;
+            OnPropertyChanged(nameof(RestoreStatusMessage));
         }
 
         public void ShowError(bool corrupted)
@@ -195,6 +214,40 @@ namespace RevitGit.UI.History
             _confirmSavedComparisonCommand?.RaiseCanExecuteChanged();
         }
 
+        private bool CanRestore()
+        {
+            return _restoreRequest != null && State == HistoryPaneState.Ready
+                   && SelectedVersion != null && !SelectedVersion.IsCurrent && !IsBusy;
+        }
+
+        private void Restore()
+        {
+            IsBusy = true;
+            RestoreStatusMessage = "Восстановление…";
+            OnPropertyChanged(nameof(RestoreStatusMessage));
+            _restoreRequest.RequestRestore(SelectedVersion.Id);
+        }
+
+        public void ShowRestoreCancelled()
+        {
+            IsBusy = false;
+            RestoreStatusMessage = null;
+            OnPropertyChanged(nameof(RestoreStatusMessage));
+        }
+
+        public void ShowRestoreError(string message)
+        {
+            IsBusy = false;
+            RestoreStatusMessage = message;
+            OnPropertyChanged(nameof(RestoreStatusMessage));
+        }
+
+        private void RaiseActionCanExecuteChanged()
+        {
+            RaiseCompareCanExecuteChanged();
+            _restoreCommand?.RaiseCanExecuteChanged();
+        }
+
         private void ResetContent()
         {
             FamilyFileName = null;
@@ -205,6 +258,8 @@ namespace RevitGit.UI.History
             IsComparePage = false;
             IsChoosingTarget = false;
             IsBusy = false;
+            RestoreStatusMessage = null;
+            OnPropertyChanged(nameof(RestoreStatusMessage));
         }
 
         private static string MessageFor(HistoryPaneState state)

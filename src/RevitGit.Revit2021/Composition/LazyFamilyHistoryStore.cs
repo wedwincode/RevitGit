@@ -10,7 +10,7 @@ using RevitGit.Infrastructure.Git;
 
 namespace RevitGit.Revit2021.Composition
 {
-    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore
+    internal sealed class LazyFamilyHistoryStore : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore
     {
         private readonly string _familyPath;
         private readonly FamilyRepositoryManager _repositoryManager;
@@ -67,6 +67,31 @@ namespace RevitGit.Revit2021.Composition
         public void RestoreVersionContent(FamilyIdentity familyIdentity, VersionId versionId)
         {
             EnsureAdapter().RestoreVersionContent(familyIdentity, versionId);
+        }
+
+        public PreparedRestoreContent PrepareRestoreContent(FamilyIdentity familyIdentity, VersionId sourceVersionId, VersionId expectedCurrentVersionId)
+        {
+            return EnsureAdapter().PrepareRestoreContent(familyIdentity, sourceVersionId, expectedCurrentVersionId);
+        }
+
+        public void PublishPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            EnsureAdapter().PublishPreparedRestore(familyIdentity, prepared);
+        }
+
+        public void RollbackPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            EnsureAdapter().RollbackPreparedRestore(familyIdentity, prepared);
+        }
+
+        public void StorePreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared, VersionId restoredVersionId)
+        {
+            EnsureAdapter().StorePreparedRestore(familyIdentity, prepared, restoredVersionId);
+        }
+
+        public void CleanupPreparedRestore(PreparedRestoreContent prepared)
+        {
+            EnsureAdapter().CleanupPreparedRestore(prepared);
         }
 
         public Domain.Snapshots.FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)

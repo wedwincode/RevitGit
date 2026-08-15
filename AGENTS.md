@@ -268,6 +268,17 @@ For Compare changes:
 6. manually compare current live state with history;
 7. verify comparison creates no Version and does not save the Revit document.
 
+For Restore changes:
+
+1. run Domain/Application restore tests;
+2. run Git/filesystem restore tests;
+3. run Harness `restore`, `restore-in-variant`, and `restore-cross-variant` scenarios;
+4. run focused History UI tests and all headless tests;
+5. build the Revit project;
+6. verify corrupt source and repository mismatch fail before document close;
+7. run a real Revit restore smoke test, including dirty cancel/confirm;
+8. run Harness `validate`, `inspect`, and source/restored `compare` on the real repository.
+
 ## Code style
 
 - favor small classes with explicit responsibility;

@@ -27,7 +27,7 @@ namespace RevitGit.Application.Tests.History
             Assert.Equal(restored.Id, fixture.ContentStore.StoredVersionId);
             Assert.Equal(third.Id, restored.ParentVersionId);
             Assert.Equal(first, restored.RestoredFromVersionId);
-            Assert.Equal("Restored from version " + first, restored.Comment);
+            Assert.Null(restored.Comment);
             Assert.Equal(restored.Id, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
             Assert.Equal(1, fixture.Repository.SaveCount);
         }
@@ -37,6 +37,7 @@ namespace RevitGit.Application.Tests.History
         {
             var fixture = CreateFixture();
             var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
 
             var restored = fixture.UseCase.Execute(source, "  Return to approved state  ");
 
@@ -48,6 +49,7 @@ namespace RevitGit.Application.Tests.History
         {
             var fixture = CreateFixture();
             var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            var current = fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
             var versionCount = fixture.History.Versions.Count;
             fixture.ContentStore.RestoreException = new InvalidOperationException("restore failed");
 
@@ -56,7 +58,7 @@ namespace RevitGit.Application.Tests.History
 
             Assert.Equal(ApplicationFailureStage.RestoreVersionContent, error.Stage);
             Assert.Equal(versionCount, fixture.History.Versions.Count);
-            Assert.Equal(source, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
+            Assert.Equal(current.Id, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
             Assert.Equal(0, fixture.Repository.SaveCount);
         }
 
@@ -65,6 +67,7 @@ namespace RevitGit.Application.Tests.History
         {
             var fixture = CreateFixture();
             var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            var current = fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
             var versionCount = fixture.History.Versions.Count;
             fixture.ContentStore.StoreException = new InvalidOperationException("store failed");
 
@@ -73,7 +76,7 @@ namespace RevitGit.Application.Tests.History
 
             Assert.Equal(ApplicationFailureStage.StoreVersionContent, error.Stage);
             Assert.Equal(versionCount, fixture.History.Versions.Count);
-            Assert.Equal(source, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
+            Assert.Equal(current.Id, fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId);
             Assert.Equal(0, fixture.Repository.SaveCount);
         }
 
@@ -95,6 +98,44 @@ namespace RevitGit.Application.Tests.History
             Assert.Equal(first, restored.RestoredFromVersionId);
             Assert.Equal(third.Id, fixture.History.GetVariant(mainId).CurrentVersionId);
             Assert.Equal(restored.Id, fixture.History.GetVariant(variant.Id).CurrentVersionId);
+        }
+
+        [Fact]
+        public void RestoreMayUseSourceFromAnotherVariant()
+        {
+            var fixture = CreateFixture();
+            var mainId = fixture.History.CurrentVariantId;
+            var first = fixture.History.GetVariant(mainId).CurrentVersionId;
+            var second = fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
+            var third = fixture.History.AddVersion(InitialTime.AddMinutes(2), null);
+            var variant = fixture.History.CreateVariant(second.Id, "Alternative");
+            fixture.History.SwitchVariant(variant.Id);
+            var otherVariantVersion = fixture.History.AddVersion(InitialTime.AddMinutes(3), null);
+            fixture.History.SwitchVariant(mainId);
+
+            var restored = fixture.UseCase.Execute(otherVariantVersion.Id);
+
+            Assert.Equal(third.Id, restored.ParentVersionId);
+            Assert.Equal(otherVariantVersion.Id, restored.RestoredFromVersionId);
+            Assert.Equal(restored.Id, fixture.History.GetVariant(mainId).CurrentVersionId);
+            Assert.Equal(otherVariantVersion.Id, fixture.History.GetVariant(variant.Id).CurrentVersionId);
+        }
+
+        [Fact]
+        public void PrepareDoesNotMutateHistoryAndFinalizeRejectsChangedCurrentTip()
+        {
+            var fixture = CreateFixture();
+            var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
+            var count = fixture.History.Versions.Count;
+
+            var prepared = fixture.UseCase.Prepare(source);
+
+            Assert.Equal(count, fixture.History.Versions.Count);
+            Assert.Equal(0, fixture.Repository.SaveCount);
+            fixture.History.AddVersion(InitialTime.AddMinutes(2), null);
+            Assert.Throws<InvalidOperationException>(() => fixture.UseCase.Finalize(prepared));
+            Assert.Equal(0, fixture.Repository.SaveCount);
         }
 
         private static Fixture CreateFixture()

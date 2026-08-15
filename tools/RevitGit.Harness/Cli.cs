@@ -88,7 +88,7 @@ namespace RevitGit.Harness
     {
         private static readonly string[] Registered =
         {
-            "linear-history", "branching", "switch-variant", "restore", "restore-in-variant", "compare",
+            "linear-history", "branching", "switch-variant", "restore", "restore-in-variant", "restore-cross-variant", "compare",
             "reopen", "move-repository", "binary-roundtrip", "integrity", "many-versions", "topology-mismatch"
         };
         public static IReadOnlyList<string> Names => Registered;

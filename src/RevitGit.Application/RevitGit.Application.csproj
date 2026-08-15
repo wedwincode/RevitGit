@@ -18,6 +18,7 @@
     <Compile Include="Abstractions\IFamilyDocumentGateway.cs" />
     <Compile Include="Abstractions\IFamilySnapshotProvider.cs" />
     <Compile Include="Abstractions\IHistoryRepository.cs" />
+    <Compile Include="Abstractions\IPreparedRestoreContentStore.cs" />
     <Compile Include="Abstractions\IVersionContentStore.cs" />
     <Compile Include="Abstractions\IVersionSnapshotStore.cs" />
     <Compile Include="Compare\CompareSavedVersionsUseCase.cs" />
@@ -42,6 +43,7 @@
     <Compile Include="Models\FamilyIdentity.cs" />
     <Compile Include="Models\HistorySummary.cs" />
     <Compile Include="Models\InitializeHistoryResult.cs" />
+    <Compile Include="Models\PreparedRestoreContent.cs" />
     <Compile Include="Models\VariantSummary.cs" />
     <Compile Include="Models\VersionSummary.cs" />
   </ItemGroup>

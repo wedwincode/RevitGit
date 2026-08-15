@@ -11,6 +11,7 @@ using RevitGit.UI.History;
 using RevitGit.UI.Compare;
 using RevitGit.Domain.Identifiers;
 using RevitGit.Revit2021.Snapshots;
+using RevitGit.Revit2021.Restore;
 
 namespace RevitGit.Revit2021.History
 {
@@ -18,11 +19,14 @@ namespace RevitGit.Revit2021.History
     {
         private readonly HistoryViewModel _viewModel;
         private VersionId _pendingCurrentComparison;
+        private VersionId _pendingRestore;
         private string _displayedFamilyPath;
+        private readonly Action _restoreCompleted;
 
-        public RefreshHistoryExternalEventHandler(HistoryViewModel viewModel)
+        public RefreshHistoryExternalEventHandler(HistoryViewModel viewModel, Action restoreCompleted = null)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _restoreCompleted = restoreCompleted;
         }
 
         public void Execute(UIApplication application)
@@ -32,6 +36,13 @@ namespace RevitGit.Revit2021.History
             if (comparison != null)
             {
                 CompareCurrent(application, comparison);
+                return;
+            }
+            var restore = _pendingRestore;
+            _pendingRestore = null;
+            if (restore != null)
+            {
+                Restore(application, restore);
                 return;
             }
             var stopwatch = Stopwatch.StartNew();
@@ -96,6 +107,102 @@ namespace RevitGit.Revit2021.History
         public void QueueCompareWithCurrent(VersionId sourceVersionId)
         {
             if (_pendingCurrentComparison == null) _pendingCurrentComparison = sourceVersionId;
+        }
+
+        public void QueueRestore(VersionId sourceVersionId)
+        {
+            if (_pendingRestore == null) _pendingRestore = sourceVersionId;
+        }
+
+        private void Restore(UIApplication application, VersionId sourceVersionId)
+        {
+            var prepared = default(RevitGit.Application.Models.PreparedRestoreContent);
+            try
+            {
+                var document = application?.ActiveUIDocument?.Document;
+                if (document == null || !document.IsFamilyDocument || !IsSavedFamilyPath(document.PathName)
+                    || string.IsNullOrWhiteSpace(_displayedFamilyPath)
+                    || !string.Equals(Path.GetFullPath(document.PathName), Path.GetFullPath(_displayedFamilyPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    _viewModel.ShowRestoreError("Активное семейство изменилось. Повторите операцию.");
+                    return;
+                }
+                var source = _viewModel.Versions.SingleOrDefault(item => item.Id.Equals(sourceVersionId));
+                if (source == null || source.IsCurrent)
+                {
+                    _viewModel.ShowRestoreError(source == null
+                        ? "Выбранная версия больше недоступна."
+                        : "Эта версия уже текущая.");
+                    return;
+                }
+
+                var dialog = new TaskDialog("История семейств")
+                {
+                    MainInstruction = "Восстановить версию?",
+                    MainContent = "Текущее состояние семейства будет заменено содержимым выбранной версии.\n\n"
+                                  + "История не будет удалена — после восстановления будет создана новая версия.\n\n"
+                                  + (document.IsModified
+                                      ? "В текущем семействе есть несохранённые изменения. При восстановлении они будут потеряны.\n\n"
+                                      : string.Empty)
+                                  + "Выбранная версия: " + source.CreatedAtText
+                                  + (string.IsNullOrWhiteSpace(source.Comment) ? string.Empty : "\n\"" + source.Comment + "\"")
+                };
+                dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Восстановить");
+                dialog.CommonButtons = TaskDialogCommonButtons.Cancel;
+                dialog.DefaultButton = TaskDialogResult.Cancel;
+                if (dialog.Show() != TaskDialogResult.CommandLink1)
+                {
+                    _viewModel.ShowRestoreCancelled();
+                    return;
+                }
+
+                var useCase = RevitCompositionRoot.CreateRestoreVersionUseCase(document);
+                prepared = useCase.Prepare(sourceVersionId);
+                var coordinatorInput = prepared;
+                prepared = null; // coordinator owns cleanup once execution starts, including failure paths
+                new RevitRestoreCoordinator().Execute(application, document, useCase, coordinatorInput);
+                var reopened = application.ActiveUIDocument?.Document;
+                if (reopened == null) throw new InvalidOperationException("The restored family is not active.");
+                var summary = RevitCompositionRoot.CreateGetHistoryUseCase(reopened).Execute();
+                var currentVariant = summary.Variants.Single(variant => variant.IsCurrent);
+                _viewModel.ShowHistory(Path.GetFileName(reopened.PathName), currentVariant.Name, summary.Versions);
+                _displayedFamilyPath = reopened.PathName;
+                TaskDialog.Show("История семейств", "Версия восстановлена.");
+            }
+            catch (RestoreReopenException exception)
+            {
+                Debug.WriteLine("Family History restored file reopen failed: " + exception);
+                _viewModel.ShowRestoreError("Семейство восстановлено на диске, но Revit не смог открыть его автоматически.\nОткройте файл снова:\n" + exception.FamilyPath);
+            }
+            catch (RepositoryCorruptedException exception)
+            {
+                Debug.WriteLine("Family History restore preflight failed: " + exception);
+                _viewModel.ShowRestoreError("Не удалось восстановить версию: история повреждена или неполна.");
+            }
+            catch (GitRepositoryCorruptedException exception)
+            {
+                Debug.WriteLine("Family History restore topology validation failed: " + exception);
+                _viewModel.ShowRestoreError("Не удалось восстановить версию: история повреждена или неполна.");
+            }
+            catch (Exception exception)
+            {
+                Debug.WriteLine("Family History restore failed: " + exception);
+                _viewModel.ShowRestoreError("Не удалось восстановить версию." + exception.Message);
+            }
+            finally
+            {
+                if (prepared != null)
+                {
+                    try
+                    {
+                        var document = application?.ActiveUIDocument?.Document;
+                        if (document != null)
+                            RevitCompositionRoot.CreateRestoreVersionUseCase(document).Cleanup(prepared);
+                    }
+                    catch (Exception cleanupException) { Debug.WriteLine("Family History restore cleanup failed: " + cleanupException); }
+                }
+                _restoreCompleted?.Invoke();
+            }
         }
 
         public void CompareSaved(VersionId sourceVersionId, VersionId targetVersionId)

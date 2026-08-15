@@ -4,7 +4,7 @@ Offline version history for Autodesk Revit family development.
 
 ## Status
 
-Milestone 3 development: Revit 2021 can create explicit family versions, browse history, and compare semantic changes in the dockable pane. Restore and variant actions are still pending.
+Milestone 3 development: Revit 2021 can create explicit family versions, browse history, compare semantic changes, and restore a historical version from the dockable pane. Variant actions are still pending.
 
 Target: Autodesk Revit 2021 on Windows.
 
@@ -266,10 +266,18 @@ Choose `Сравнить с другой версией`, select a target, and r
 
 The current comparison scope includes family name/category, parameters, data types, scope, formulas, family types, values in canonical units, and a geometry changed flag. Detailed geometry and visual overlays are not included.
 
+## Restore
+
+Select a historical version in History and choose `Восстановить`. Restoring does not delete subsequent versions: it creates a new current version whose binary and semantic snapshot equal the selected source. The new version records structured restoration provenance and is appended to the current variant.
+
+The add-in asks for confirmation before changing the open family. If the Revit document is modified, the dialog explicitly warns that unsaved changes will be lost. Restore never saves or silently versions that dirty state.
+
+Before closing the current family, the source binary and snapshot, the rollback version, and repository topology are checked and the source is materialized in managed temporary storage. The Revit lifecycle then activates the staged family, closes the previous document without saving, replaces the original file, finalizes history, and reopens the original path. A real Revit 2021 smoke test remains required for the document activation/close/reopen sequence.
+
 Current limitations:
 
 - the pane is a read-only history browser for the current variant;
-- restore, create-variant, switch-variant, and graph actions are not present yet;
+- create-variant, switch-variant, and graph actions are not present yet;
 - unsaved changes in the active family are not tracked or represented as a pseudo-version;
 - Revit docking and event behavior still require the manual Revit 2021 smoke checklist after deployment.
 
@@ -277,7 +285,7 @@ Current limitations:
 
 - only family documents already saved as `.rfa` can create versions;
 - versions are created only by the explicit ribbon command, not by ordinary Revit Save;
-- the production history pane supports read-only comparison; restore and variants UI are not implemented yet;
+- the production history pane supports comparison and restore; variants UI is not implemented yet;
 - Revit save/version storage is synchronous and has no progress UI;
 - real Revit validation must be completed with the manual smoke checklist, followed by Harness `validate`, `inspect`, and `compare`.
 

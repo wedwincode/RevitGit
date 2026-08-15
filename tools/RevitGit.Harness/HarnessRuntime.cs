@@ -296,6 +296,7 @@ namespace RevitGit.Harness
                 case "switch-variant": SwitchVariant(workspace, report); break;
                 case "restore": Restore(workspace, report, false); break;
                 case "restore-in-variant": Restore(workspace, report, true); break;
+                case "restore-cross-variant": RestoreCrossVariant(workspace, report); break;
                 case "compare": Compare(workspace, report); break;
                 case "reopen": Reopen(workspace, report); break;
                 case "move-repository": MoveRepository(workspace, report); break;
@@ -391,6 +392,31 @@ namespace RevitGit.Harness
             if (inVariant) ScenarioAssert.True(root.MetadataHistory.Variants.Values.Any(item => item.Name == "main" && item.CurrentVersionId.Equals(mainTip)), "Main variant must remain untouched.");
             ScenarioAssert.True(root.Validate().IsValid, "Restore topology must validate.");
             report.Pass(inVariant ? "A restored as E in secondary variant" : "A restored as new version D"); report.Pass("binary and snapshot equal A; later history preserved");
+            report.Line(HistoryTextRenderer.Render(root.MetadataHistory, aliases, root.Adapter, false).TrimEnd());
+        }
+
+        private static void RestoreCrossVariant(ScenarioWorkspace workspace, ScenarioReport report)
+        {
+            var root = NewRoot(workspace); var aliases = InitialAliases(root);
+            var b = MutateAndSave(root, 2, SnapshotFixtureFactory.Default(1000, null, "G1", false), "B"); aliases.Add("B", b.Id);
+            var c = MutateAndSave(root, 3, SnapshotFixtureFactory.Default(1100, null, "G2", false), "C"); aliases.Add("C", c.Id);
+            var main = root.MetadataHistory.CurrentVariantId;
+            var variant = root.CreateVariant(b.Id, "variant-1"); root.Switch(variant.Id);
+            var dSnapshot = SnapshotFixtureFactory.Default(1200, "Width / 2", "G3", true);
+            var d = MutateAndSave(root, 4, dSnapshot, "D"); aliases.Add("D", d.Id);
+            var dBytes = File.ReadAllBytes(workspace.FamilyPath);
+            root.Switch(main);
+
+            var restored = root.Restore(d.Id); aliases.Add("E", restored.Id);
+
+            ScenarioAssert.Equal(c.Id, restored.ParentVersionId, "Cross-variant restore parent must be the main tip C.");
+            ScenarioAssert.Equal(d.Id, restored.RestoredFromVersionId, "Cross-variant restore source must be D.");
+            ScenarioAssert.Equal(d.Id, root.MetadataHistory.GetVariant(variant.Id).CurrentVersionId, "Source variant must remain at D.");
+            ScenarioAssert.Bytes(dBytes, File.ReadAllBytes(workspace.FamilyPath), "Cross-variant restored binary must equal D.");
+            ScenarioAssert.True(root.ReadSnapshot(restored.Id).Equals(dSnapshot), "Cross-variant restored snapshot must equal D.");
+            ScenarioAssert.True(root.Validate().IsValid, "Cross-variant restore topology must validate.");
+            report.Pass("D from secondary variant restored as E on main");
+            report.Pass("main parent, source variant, binary, snapshot and topology are correct");
             report.Line(HistoryTextRenderer.Render(root.MetadataHistory, aliases, root.Adapter, false).TrimEnd());
         }
 

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Security.Cryptography;
 using LibGit2Sharp;
 using RevitGit.Application.Abstractions;
 using RevitGit.Application.Models;
@@ -16,7 +17,7 @@ using HistoryVersion = RevitGit.Domain.History.Version;
 
 namespace RevitGit.Infrastructure.Git
 {
-    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore
+    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore, IVersionSnapshotStore, IPreparedRestoreContentStore
     {
         private const string FamilyFileName = "family.rfa";
         private const string SnapshotFileName = "snapshot.json";
@@ -183,6 +184,95 @@ namespace RevitGit.Infrastructure.Git
                 TryDelete(temporaryPath);
                 throw new GitStorageException("The selected version content could not be restored.", exception);
             }
+        }
+
+        public PreparedRestoreContent PrepareRestoreContent(
+            FamilyIdentity familyIdentity,
+            VersionId sourceVersionId,
+            VersionId expectedCurrentVersionId)
+        {
+            RequireIdentity(familyIdentity);
+            if ((File.GetAttributes(familyIdentity.Value) & FileAttributes.ReadOnly) != 0)
+                throw new UnauthorizedAccessException("The family file is read-only.");
+            var familyContent = ReadVersionFile(sourceVersionId, FamilyFileName);
+            var snapshotContent = ReadVersionFile(sourceVersionId, SnapshotFileName);
+            // The current version is read as part of preflight so a rollback source is known to exist.
+            ReadVersionFile(expectedCurrentVersionId, FamilyFileName);
+            ReadVersionFile(expectedCurrentVersionId, SnapshotFileName);
+            FamilySnapshot snapshot = null;
+            if (_snapshotDeserializer != null)
+            {
+                try { snapshot = _snapshotDeserializer(snapshotContent); }
+                catch (Exception exception)
+                {
+                    throw new GitRepositoryCorruptedException("The stored version snapshot is invalid.", exception);
+                }
+            }
+            var stagingDirectory = Path.Combine(_repositoryDirectory, ".tmp-restore-" + Guid.NewGuid().ToString("N"));
+            var stagingPath = Path.Combine(stagingDirectory, FamilyFileName);
+            try
+            {
+                Directory.CreateDirectory(stagingDirectory);
+                File.WriteAllBytes(stagingPath, familyContent);
+                return new PreparedRestoreContent(familyIdentity, sourceVersionId, expectedCurrentVersionId,
+                    stagingPath, snapshot, ComputeSha256(familyContent));
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                TryDeleteDirectory(stagingDirectory);
+                throw new GitStorageException("The selected version could not be prepared.", exception);
+            }
+        }
+
+        public void PublishPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            RequirePrepared(familyIdentity, prepared);
+            var content = File.ReadAllBytes(prepared.PreparedFamilyFilePath);
+            if (!string.Equals(ComputeSha256(content), prepared.BinaryChecksum, StringComparison.Ordinal))
+                throw new GitRepositoryCorruptedException("Prepared restore content failed checksum verification.");
+            var temporaryPath = familyIdentity.Value + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllBytes(temporaryPath, content);
+                File.Replace(temporaryPath, familyIdentity.Value, null);
+            }
+            finally { TryDelete(temporaryPath); }
+        }
+
+        public void RollbackPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            RequirePrepared(familyIdentity, prepared);
+            PublishVersionFile(familyIdentity, prepared.ExpectedCurrentVersionId);
+        }
+
+        public void StorePreparedRestore(
+            FamilyIdentity familyIdentity,
+            PreparedRestoreContent prepared,
+            VersionId restoredVersionId)
+        {
+            RequirePrepared(familyIdentity, prepared);
+            if (_pending != null) throw new GitStorageException("Another version is already being prepared.");
+            var pendingDirectory = Path.Combine(_repositoryDirectory, ".pending-" + restoredVersionId.Value.ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(pendingDirectory);
+                File.WriteAllBytes(Path.Combine(pendingDirectory, FamilyFileName),
+                    ReadVersionFile(prepared.SourceVersionId, FamilyFileName));
+                File.WriteAllBytes(Path.Combine(pendingDirectory, SnapshotFileName),
+                    ReadVersionFile(prepared.SourceVersionId, SnapshotFileName));
+                _pending = new PendingVersion(restoredVersionId, pendingDirectory);
+            }
+            catch
+            {
+                TryDeleteDirectory(pendingDirectory);
+                throw;
+            }
+        }
+
+        public void CleanupPreparedRestore(PreparedRestoreContent prepared)
+        {
+            if (prepared == null) return;
+            TryDeleteDirectory(Path.GetDirectoryName(prepared.PreparedFamilyFilePath));
         }
 
         public FamilySnapshot ReadSnapshot(FamilyIdentity familyIdentity, VersionId versionId)
@@ -563,6 +653,31 @@ namespace RevitGit.Infrastructure.Git
         {
             if (identity == null) throw new ArgumentNullException(nameof(identity));
             if (!File.Exists(identity.Value)) throw new ArgumentException("Family file does not exist.", nameof(identity));
+        }
+
+        private static void RequirePrepared(FamilyIdentity identity, PreparedRestoreContent prepared)
+        {
+            RequireIdentity(identity);
+            if (prepared == null || !identity.Equals(prepared.FamilyIdentity))
+                throw new ArgumentException("Prepared restore belongs to another family.", nameof(prepared));
+        }
+
+        private void PublishVersionFile(FamilyIdentity identity, VersionId versionId)
+        {
+            var content = ReadVersionFile(versionId, FamilyFileName);
+            var temporaryPath = identity.Value + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllBytes(temporaryPath, content);
+                File.Replace(temporaryPath, identity.Value, null);
+            }
+            finally { TryDelete(temporaryPath); }
+        }
+
+        private static string ComputeSha256(byte[] content)
+        {
+            using (var sha = SHA256.Create())
+                return BitConverter.ToString(sha.ComputeHash(content)).Replace("-", string.Empty).ToLowerInvariant();
         }
 
         private void CleanupPending()

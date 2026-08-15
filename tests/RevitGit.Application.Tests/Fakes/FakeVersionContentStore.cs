@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using RevitGit.Application.Abstractions;
 using RevitGit.Application.Models;
 using RevitGit.Domain.Identifiers;
+using RevitGit.Domain.Snapshots;
 
 namespace RevitGit.Application.Tests.Fakes
 {
-    internal sealed class FakeVersionContentStore : IVersionContentStore
+    internal sealed class FakeVersionContentStore : IVersionContentStore, IPreparedRestoreContentStore
     {
         private readonly IList<string> _operations;
 
@@ -44,6 +45,45 @@ namespace RevitGit.Application.Tests.Fakes
             {
                 throw RestoreException;
             }
+        }
+
+        public PreparedRestoreContent PrepareRestoreContent(
+            FamilyIdentity familyIdentity,
+            VersionId sourceVersionId,
+            VersionId expectedCurrentVersionId)
+        {
+            RestoredVersionId = sourceVersionId;
+            _operations?.Add("content-prepare");
+            if (RestoreException != null) throw RestoreException;
+            return new PreparedRestoreContent(familyIdentity, sourceVersionId, expectedCurrentVersionId,
+                "prepared.rfa", new FamilySnapshot("Family", "Category",
+                    new FamilyParameterSnapshot[0], new FamilyTypeSnapshot[0], null), "checksum");
+        }
+
+        public void PublishPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            _operations?.Add("content-publish");
+        }
+
+        public void RollbackPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
+        {
+            _operations?.Add("content-rollback");
+        }
+
+        public void StorePreparedRestore(
+            FamilyIdentity familyIdentity,
+            PreparedRestoreContent prepared,
+            VersionId restoredVersionId)
+        {
+            StoreCalled = true;
+            StoredVersionId = restoredVersionId;
+            _operations?.Add("content-store");
+            if (StoreException != null) throw StoreException;
+        }
+
+        public void CleanupPreparedRestore(PreparedRestoreContent prepared)
+        {
+            _operations?.Add("content-cleanup");
         }
     }
 }
