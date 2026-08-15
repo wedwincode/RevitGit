@@ -61,7 +61,7 @@ namespace RevitGit.Infrastructure.FileSystem.Tests.Repositories
                 Assert.True(File.Exists(repository.Paths.IndexPath));
                 Assert.True(File.Exists(repository.Paths.MetadataPath));
                 Assert.True(Directory.Exists(repository.Paths.VersionsDirectory));
-                Assert.Equal(1, repository.Metadata.StorageFormatVersion);
+                Assert.Equal(StorageFormat.CurrentVersion, repository.Metadata.StorageFormatVersion);
                 Assert.Equal("Door.rfa", repository.Metadata.FamilyFileName);
                 Assert.Equal(CreatedAt, repository.Metadata.CreatedAt);
                 Assert.NotEqual(Guid.Empty, repository.Metadata.RepositoryId);

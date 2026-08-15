@@ -27,5 +27,10 @@ Most initial product decisions are now fixed in `project.md`. Keep this file sho
 - Store complete `.rfa` states; no custom binary delta optimization.
 - Family history is moved/copied together with the adjacent history folder.
 - Author identity is not stored.
+- Git history uses LibGit2Sharp 0.31.0 with a fixed internal signature; no external
+  Git executable or user Git configuration is required.
+- Storage format 2 stores immutable version content in the internal Git repository;
+  `history.json` temporarily remains canonical domain metadata and is integrity-checked
+  against Git topology on load.
 - No telemetry/network/cloud behavior.
 - Repository scope is one independent logical repository per `.rfa` family.

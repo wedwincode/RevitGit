@@ -581,3 +581,42 @@ FamilyHistory.Revit2022
 or by multi-targeting/adapters when practical.
 
 Do not let Revit 2021-specific API types leak into Domain/Application public APIs.
+
+## 21. Git-backed history storage (Epic 6)
+
+Storage format 2 adds an embedded repository below each Epic 5 family repository:
+
+```text
+.familyhistory/
+  index.json
+  repositories/<repository-id>/
+    repository.json
+    history.json
+    repo/
+      .git/
+      family.rfa
+      snapshot.json
+      version.json
+```
+
+`LibGit2VersionRepository` implements the existing neutral `IHistoryRepository` and
+`IVersionContentStore` contracts. It delegates domain metadata persistence to the
+filesystem history repository while making Git the permanent version-content store.
+The legacy `versions/<version-id>` archive is not written when this adapter is used.
+`history.json` remains the canonical domain metadata/topology store during this
+transition; Git parent links and variant tips are a mandatory mirror validated on
+every load, so divergence is reported as corruption rather than reconciled silently.
+
+Each version commit contains exactly `family.rfa`, `snapshot.json`, and
+`version.json`. The JSON metadata is the durable `VersionId` to object mapping and
+contains parent, creation time, comment, and restore origin. Internal branches use
+`variant/<VariantId in N format>` and never use the presentation name. The checked
+out internal branch represents the current variant and normal operations reject a
+detached state.
+
+Historical content is read directly from immutable commit trees. Restore copies the
+selected historical binary into the family file, then the normal save path creates a
+new version on the current variant tip; no reset, revert, merge, or rebase operation
+is used. LibGit2Sharp 0.31.0 and NativeBinaries 2.0.323 are deployed with the add-in;
+the Windows x64 runtime is loaded from `lib/win32/x64/git2-3f4182d.dll` without an
+external Git installation.

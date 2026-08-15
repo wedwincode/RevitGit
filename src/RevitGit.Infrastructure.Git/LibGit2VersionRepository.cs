@@ -1,0 +1,553 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using LibGit2Sharp;
+using RevitGit.Application.Abstractions;
+using RevitGit.Application.Models;
+using RevitGit.Domain.History;
+using RevitGit.Domain.Identifiers;
+using HistoryVersion = RevitGit.Domain.History.Version;
+
+namespace RevitGit.Infrastructure.Git
+{
+    public sealed class LibGit2VersionRepository : IHistoryRepository, IVersionContentStore
+    {
+        private const string FamilyFileName = "family.rfa";
+        private const string SnapshotFileName = "snapshot.json";
+        private const string VersionFileName = "version.json";
+        private static readonly string[] ControlledFiles = { FamilyFileName, SnapshotFileName, VersionFileName };
+        private readonly string _repositoryDirectory;
+        private readonly string _workDirectory;
+        private readonly IHistoryRepository _metadataRepository;
+        private readonly Func<byte[]> _snapshotContentProvider;
+        private PendingVersion _pending;
+
+        public LibGit2VersionRepository(
+            string repositoryDirectory,
+            IHistoryRepository metadataRepository,
+            Func<byte[]> snapshotContentProvider)
+        {
+            if (string.IsNullOrWhiteSpace(repositoryDirectory))
+                throw new ArgumentException("Repository directory is required.", nameof(repositoryDirectory));
+            _repositoryDirectory = Path.GetFullPath(repositoryDirectory);
+            _workDirectory = Path.Combine(_repositoryDirectory, "repo");
+            _metadataRepository = metadataRepository ?? throw new ArgumentNullException(nameof(metadataRepository));
+            _snapshotContentProvider = snapshotContentProvider ?? throw new ArgumentNullException(nameof(snapshotContentProvider));
+        }
+
+        public int CommitCount
+        {
+            get
+            {
+                if (!Repository.IsValid(_workDirectory)) return 0;
+                using (var repository = OpenRepository()) return EnumerateCommits(repository).Count;
+            }
+        }
+
+        public string CurrentInternalBranchName
+        {
+            get
+            {
+                using (var repository = OpenRepository())
+                {
+                    if (repository.Info.IsHeadDetached)
+                        throw new GitRepositoryCorruptedException("The current variant is not attached to an internal branch.");
+                    return repository.Head.FriendlyName;
+                }
+            }
+        }
+
+        public bool Exists(FamilyIdentity familyIdentity)
+        {
+            RequireIdentity(familyIdentity);
+            return _metadataRepository.Exists(familyIdentity);
+        }
+
+        public FamilyHistory Load(FamilyIdentity familyIdentity)
+        {
+            RequireIdentity(familyIdentity);
+            var history = _metadataRepository.Load(familyIdentity);
+            if (history == null) return null;
+            ValidateIntegrity(history);
+            return history;
+        }
+
+        public void Save(FamilyIdentity familyIdentity, FamilyHistory history)
+        {
+            RequireIdentity(familyIdentity);
+            if (history == null) throw new ArgumentNullException(nameof(history));
+
+            var previous = _metadataRepository.Exists(familyIdentity)
+                ? _metadataRepository.Load(familyIdentity)
+                : null;
+            var newVersions = history.Versions.Values
+                .Where(version => previous == null || !previous.Versions.ContainsKey(version.Id))
+                .ToList();
+
+            if (newVersions.Count > 1)
+                throw new GitStorageException("More than one version cannot be persisted in one operation.");
+            if (newVersions.Count == 1 && (_pending == null || !_pending.VersionId.Equals(newVersions[0].Id)))
+                throw new GitStorageException("The new version content was not prepared.");
+            if (newVersions.Count == 0 && _pending != null)
+                throw new GitStorageException("Prepared content does not correspond to a new version.");
+
+            try
+            {
+                if (newVersions.Count == 1)
+                {
+                    EnsureRepository();
+                    CommitVersion(history, newVersions[0]);
+                }
+
+                if (Repository.IsValid(_workDirectory))
+                {
+                    using (var repository = OpenRepository())
+                    {
+                        SynchronizeVariants(repository, history);
+                    }
+                }
+
+                _metadataRepository.Save(familyIdentity, history);
+                CleanupPending();
+            }
+            catch (GitStorageException)
+            {
+                throw;
+            }
+            catch (LibGit2SharpException exception)
+            {
+                throw new GitStorageException("Version history could not be persisted.", exception);
+            }
+        }
+
+        public void StoreCurrentVersion(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            RequireIdentity(familyIdentity);
+            if (versionId == null) throw new ArgumentNullException(nameof(versionId));
+            if (_pending != null) throw new GitStorageException("Another version is already being prepared.");
+            if (Repository.IsValid(_workDirectory) && TryGetStorageObjectId(versionId, out _))
+                throw new GitStorageException("The version identifier is already stored.");
+
+            byte[] snapshot;
+            try
+            {
+                snapshot = _snapshotContentProvider();
+            }
+            catch (Exception exception)
+            {
+                throw new GitStorageException("The version snapshot could not be captured.", exception);
+            }
+
+            if (snapshot == null) throw new GitStorageException("The version snapshot is missing.");
+            var pendingDirectory = Path.Combine(_repositoryDirectory, ".pending-" + versionId.Value.ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(_repositoryDirectory);
+                Directory.CreateDirectory(pendingDirectory);
+                File.WriteAllBytes(Path.Combine(pendingDirectory, FamilyFileName), File.ReadAllBytes(familyIdentity.Value));
+                File.WriteAllBytes(Path.Combine(pendingDirectory, SnapshotFileName), snapshot);
+                _pending = new PendingVersion(versionId, pendingDirectory);
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                throw new GitStorageException("The version content could not be prepared.", exception);
+            }
+        }
+
+        public void RestoreVersionContent(FamilyIdentity familyIdentity, VersionId versionId)
+        {
+            RequireIdentity(familyIdentity);
+            var content = ReadVersionFile(versionId, FamilyFileName);
+            var temporaryPath = familyIdentity.Value + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllBytes(temporaryPath, content);
+                File.Replace(temporaryPath, familyIdentity.Value, null);
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                TryDelete(temporaryPath);
+                throw new GitStorageException("The selected version content could not be restored.", exception);
+            }
+        }
+
+        public byte[] ReadVersionFile(VersionId versionId, string path)
+        {
+            if (versionId == null) throw new ArgumentNullException(nameof(versionId));
+            if (!ControlledFiles.Contains(path, StringComparer.Ordinal))
+                throw new ArgumentException("Only controlled version files can be read.", nameof(path));
+            try
+            {
+                using (var repository = OpenRepository())
+                {
+                    var commit = ResolveCommit(repository, versionId);
+                    var entry = commit.Tree[path];
+                    var blob = entry == null ? null : entry.Target as Blob;
+                    if (blob == null)
+                        throw new GitRepositoryCorruptedException("A controlled file is missing from the stored version.");
+                    using (var source = blob.GetContentStream())
+                    using (var destination = new MemoryStream())
+                    {
+                        source.CopyTo(destination);
+                        return destination.ToArray();
+                    }
+                }
+            }
+            catch (GitStorageException) { throw; }
+            catch (LibGit2SharpException exception)
+            {
+                throw new GitStorageException("The stored version file could not be read.", exception);
+            }
+        }
+
+        public string GetStorageObjectId(VersionId versionId)
+        {
+            using (var repository = OpenRepository()) return ResolveCommit(repository, versionId).Id.Sha;
+        }
+
+        public VersionId GetParentVersionId(VersionId versionId)
+        {
+            using (var repository = OpenRepository())
+            {
+                var commit = ResolveCommit(repository, versionId);
+                var parent = commit.Parents.SingleOrDefault();
+                return parent == null ? null : ReadMetadata(parent).VersionId;
+            }
+        }
+
+        public string GetInternalBranchName(VariantId variantId)
+        {
+            return GitRefNameMapper.ForVariant(variantId);
+        }
+
+        public void ValidateIntegrity(FamilyHistory history)
+        {
+            if (history == null) throw new ArgumentNullException(nameof(history));
+            if (!Repository.IsValid(_workDirectory))
+                throw new GitRepositoryCorruptedException("The internal version repository is missing.");
+
+            try
+            {
+                using (var repository = OpenRepository())
+                {
+                    if (repository.Info.IsHeadDetached)
+                        throw new GitRepositoryCorruptedException("The current variant is detached from its internal branch.");
+                    var mapping = BuildVersionMap(repository);
+                    foreach (var version in history.Versions.Values)
+                    {
+                        Commit commit;
+                        if (!mapping.TryGetValue(version.Id, out commit))
+                            throw new GitRepositoryCorruptedException("A stored version mapping is missing.");
+                        var metadata = ReadMetadata(commit);
+                        if (!Equals(metadata.VersionId, version.Id)
+                            || !Equals(metadata.ParentVersionId, version.ParentVersionId)
+                            || !Equals(metadata.RestoredFromVersionId, version.RestoredFromVersionId)
+                            || metadata.CreatedAt != version.CreatedAt
+                            || !string.Equals(metadata.Comment, version.Comment, StringComparison.Ordinal))
+                            throw new GitRepositoryCorruptedException("Stored version metadata does not match family history.");
+                        var parents = commit.Parents.ToList();
+                        if (parents.Count > 1)
+                            throw new GitRepositoryCorruptedException("A stored version has more than one parent.");
+                        var actualParent = parents.Count == 0 ? null : ReadMetadata(parents[0]).VersionId;
+                        if (!Equals(actualParent, version.ParentVersionId))
+                            throw new GitRepositoryCorruptedException("Stored version parent relationship is inconsistent.");
+                    }
+                    if (mapping.Count != history.Versions.Count)
+                        throw new GitRepositoryCorruptedException("The internal repository contains versions absent from metadata.");
+
+                    foreach (var variant in history.Variants.Values)
+                    {
+                        var branch = repository.Branches[GitRefNameMapper.ForVariant(variant.Id)];
+                        if (branch == null)
+                            throw new GitRepositoryCorruptedException("A mapped variant branch is missing.");
+                        if (!Equals(ReadMetadata(branch.Tip).VersionId, variant.CurrentVersionId))
+                            throw new GitRepositoryCorruptedException("A variant tip does not match family history.");
+                    }
+                    if (!string.Equals(repository.Head.FriendlyName,
+                        GitRefNameMapper.ForVariant(history.CurrentVariantId), StringComparison.Ordinal))
+                        throw new GitRepositoryCorruptedException("The current variant does not match the attached internal branch.");
+                }
+            }
+            catch (GitStorageException) { throw; }
+            catch (LibGit2SharpException exception)
+            {
+                throw new GitRepositoryCorruptedException("The internal version repository could not be validated.", exception);
+            }
+        }
+
+        private void CommitVersion(FamilyHistory history, HistoryVersion version)
+        {
+            using (var repository = OpenRepository())
+            {
+                var hasCommits = EnumerateCommits(repository).Count != 0;
+                if (hasCommits)
+                {
+                    var currentBranchName = GitRefNameMapper.ForVariant(history.CurrentVariantId);
+                    var currentBranch = repository.Branches[currentBranchName];
+                    if (currentBranch == null)
+                        throw new GitRepositoryCorruptedException("The current variant branch is missing.");
+                    Commands.Checkout(repository, currentBranch, ForceCheckout());
+                    var actualParent = ReadMetadata(currentBranch.Tip).VersionId;
+                    if (!Equals(actualParent, version.ParentVersionId))
+                        throw new GitRepositoryCorruptedException("The new version parent does not match the current variant tip.");
+                }
+                else if (version.ParentVersionId != null)
+                {
+                    throw new GitRepositoryCorruptedException("The first stored version cannot have a parent.");
+                }
+
+                CopyPendingToWorkTree();
+                File.WriteAllBytes(Path.Combine(_workDirectory, VersionFileName), SerializeMetadata(version));
+                foreach (var controlledFile in ControlledFiles) Commands.Stage(repository, controlledFile);
+                var signature = new Signature("RevitGit", "local@revitgit.invalid", version.CreatedAt);
+                var commit = repository.Commit(string.IsNullOrWhiteSpace(version.Comment) ? "Save version" : version.Comment,
+                    signature, signature);
+
+                if (!hasCommits)
+                {
+                    var initialBranchName = repository.Head.FriendlyName;
+                    var desiredBranchName = GitRefNameMapper.ForVariant(history.CurrentVariantId);
+                    var desiredBranch = repository.Branches.Add(desiredBranchName, commit);
+                    Commands.Checkout(repository, desiredBranch, ForceCheckout());
+                    if (!string.Equals(initialBranchName, desiredBranchName, StringComparison.Ordinal)
+                        && repository.Branches[initialBranchName] != null)
+                        repository.Branches.Remove(initialBranchName);
+                }
+            }
+        }
+
+        private static void SynchronizeVariants(Repository repository, FamilyHistory history)
+        {
+            var mapping = BuildVersionMap(repository);
+            foreach (var variant in history.Variants.Values)
+            {
+                Commit expectedTip;
+                if (!mapping.TryGetValue(variant.CurrentVersionId, out expectedTip))
+                    throw new GitRepositoryCorruptedException("A variant references a version absent from internal storage.");
+                var branchName = GitRefNameMapper.ForVariant(variant.Id);
+                var branch = repository.Branches[branchName];
+                if (branch == null)
+                {
+                    repository.Branches.Add(branchName, expectedTip);
+                }
+                else if (branch.Tip.Id != expectedTip.Id)
+                {
+                    throw new GitRepositoryCorruptedException("A variant branch unexpectedly points to another version.");
+                }
+            }
+
+            var current = repository.Branches[GitRefNameMapper.ForVariant(history.CurrentVariantId)];
+            if (current == null) throw new GitRepositoryCorruptedException("The current variant branch is missing.");
+            Commands.Checkout(repository, current, ForceCheckout());
+        }
+
+        private void EnsureRepository()
+        {
+            if (Repository.IsValid(_workDirectory)) return;
+            Directory.CreateDirectory(_workDirectory);
+            Repository.Init(_workDirectory);
+        }
+
+        private Repository OpenRepository()
+        {
+            if (!Repository.IsValid(_workDirectory))
+                throw new GitRepositoryCorruptedException("The internal version repository is missing or invalid.");
+            try { return new Repository(_workDirectory); }
+            catch (LibGit2SharpException exception)
+            {
+                throw new GitRepositoryCorruptedException("The internal version repository could not be opened.", exception);
+            }
+        }
+
+        private void CopyPendingToWorkTree()
+        {
+            foreach (var file in new[] { FamilyFileName, SnapshotFileName })
+                File.Copy(Path.Combine(_pending.Directory, file), Path.Combine(_workDirectory, file), true);
+        }
+
+        private static Dictionary<VersionId, Commit> BuildVersionMap(Repository repository)
+        {
+            var result = new Dictionary<VersionId, Commit>();
+            foreach (var commit in EnumerateCommits(repository))
+            {
+                var metadata = ReadMetadata(commit);
+                if (result.ContainsKey(metadata.VersionId))
+                    throw new GitRepositoryCorruptedException("A version identifier is mapped to more than one stored version.");
+                result.Add(metadata.VersionId, commit);
+            }
+            return result;
+        }
+
+        private static List<Commit> EnumerateCommits(Repository repository)
+        {
+            var result = new List<Commit>();
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            var stack = new Stack<Commit>(repository.Branches.Where(branch => branch.Tip != null).Select(branch => branch.Tip));
+            if (repository.Head != null && repository.Head.Tip != null) stack.Push(repository.Head.Tip);
+            while (stack.Count != 0)
+            {
+                var commit = stack.Pop();
+                if (!visited.Add(commit.Id.Sha)) continue;
+                result.Add(commit);
+                foreach (var parent in commit.Parents) stack.Push(parent);
+            }
+            return result;
+        }
+
+        private Commit ResolveCommit(Repository repository, VersionId versionId)
+        {
+            Commit commit;
+            if (!BuildVersionMap(repository).TryGetValue(versionId, out commit))
+                throw new GitRepositoryCorruptedException("The requested version mapping is missing.");
+            return commit;
+        }
+
+        private bool TryGetStorageObjectId(VersionId versionId, out string objectId)
+        {
+            using (var repository = OpenRepository())
+            {
+                Commit commit;
+                if (BuildVersionMap(repository).TryGetValue(versionId, out commit))
+                {
+                    objectId = commit.Id.Sha;
+                    return true;
+                }
+                objectId = null;
+                return false;
+            }
+        }
+
+        private static VersionMetadata ReadMetadata(Commit commit)
+        {
+            var entry = commit.Tree[VersionFileName];
+            var blob = entry == null ? null : entry.Target as Blob;
+            if (blob == null) throw new GitRepositoryCorruptedException("Stored version metadata is missing.");
+            try
+            {
+                VersionMetadataDto dto;
+                using (var stream = blob.GetContentStream())
+                {
+                    dto = (VersionMetadataDto)new DataContractJsonSerializer(typeof(VersionMetadataDto)).ReadObject(stream);
+                }
+                Guid id;
+                DateTimeOffset createdAt;
+                if (dto == null || dto.SchemaVersion != 1 || !Guid.TryParse(dto.VersionId, out id)
+                    || !DateTimeOffset.TryParseExact(dto.CreatedAt, "O", CultureInfo.InvariantCulture,
+                        DateTimeStyles.RoundtripKind, out createdAt))
+                    throw new GitRepositoryCorruptedException("Stored version metadata has an unsupported format.");
+                return new VersionMetadata(new VersionId(id), ParseOptionalId(dto.ParentVersionId), createdAt,
+                    string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment, ParseOptionalId(dto.RestoredFromVersionId));
+            }
+            catch (GitStorageException) { throw; }
+            catch (Exception exception) when (exception is SerializationException || exception is FormatException || exception is ArgumentException)
+            {
+                throw new GitRepositoryCorruptedException("Stored version metadata is invalid.", exception);
+            }
+        }
+
+        private static byte[] SerializeMetadata(HistoryVersion version)
+        {
+            var dto = new VersionMetadataDto
+            {
+                SchemaVersion = 1,
+                VersionId = version.Id.Value.ToString("D"),
+                ParentVersionId = FormatOptionalId(version.ParentVersionId),
+                CreatedAt = version.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
+                Comment = version.Comment,
+                RestoredFromVersionId = FormatOptionalId(version.RestoredFromVersionId)
+            };
+            using (var stream = new MemoryStream())
+            {
+                new DataContractJsonSerializer(typeof(VersionMetadataDto)).WriteObject(stream, dto);
+                return stream.ToArray();
+            }
+        }
+
+        private static VersionId ParseOptionalId(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            Guid id;
+            if (!Guid.TryParse(value, out id) || id == Guid.Empty)
+                throw new GitRepositoryCorruptedException("Stored version metadata contains an invalid identifier.");
+            return new VersionId(id);
+        }
+
+        private static string FormatOptionalId(VersionId value)
+        {
+            return value == null ? null : value.Value.ToString("D");
+        }
+
+        private static CheckoutOptions ForceCheckout()
+        {
+            return new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force };
+        }
+
+        private static void RequireIdentity(FamilyIdentity identity)
+        {
+            if (identity == null) throw new ArgumentNullException(nameof(identity));
+            if (!File.Exists(identity.Value)) throw new ArgumentException("Family file does not exist.", nameof(identity));
+        }
+
+        private void CleanupPending()
+        {
+            if (_pending == null) return;
+            TryDeleteDirectory(_pending.Directory);
+            _pending = null;
+        }
+
+        private static void TryDelete(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try { if (Directory.Exists(path)) Directory.Delete(path, true); } catch { }
+        }
+
+        private sealed class PendingVersion
+        {
+            public PendingVersion(VersionId versionId, string directory)
+            {
+                VersionId = versionId;
+                Directory = directory;
+            }
+            public VersionId VersionId { get; }
+            public string Directory { get; }
+        }
+
+        private sealed class VersionMetadata
+        {
+            public VersionMetadata(VersionId versionId, VersionId parentVersionId, DateTimeOffset createdAt,
+                string comment, VersionId restoredFromVersionId)
+            {
+                VersionId = versionId;
+                ParentVersionId = parentVersionId;
+                CreatedAt = createdAt;
+                Comment = comment;
+                RestoredFromVersionId = restoredFromVersionId;
+            }
+            public VersionId VersionId { get; }
+            public VersionId ParentVersionId { get; }
+            public DateTimeOffset CreatedAt { get; }
+            public string Comment { get; }
+            public VersionId RestoredFromVersionId { get; }
+        }
+
+        [DataContract]
+        private sealed class VersionMetadataDto
+        {
+            [DataMember(Name = "schemaVersion", Order = 1)] public int SchemaVersion { get; set; }
+            [DataMember(Name = "versionId", Order = 2)] public string VersionId { get; set; }
+            [DataMember(Name = "parentVersionId", Order = 3, EmitDefaultValue = false)] public string ParentVersionId { get; set; }
+            [DataMember(Name = "createdAt", Order = 4)] public string CreatedAt { get; set; }
+            [DataMember(Name = "comment", Order = 5, EmitDefaultValue = false)] public string Comment { get; set; }
+            [DataMember(Name = "restoredFromVersionId", Order = 6, EmitDefaultValue = false)] public string RestoredFromVersionId { get; set; }
+        }
+    }
+}
