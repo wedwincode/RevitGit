@@ -227,7 +227,9 @@ namespace RevitGit.Infrastructure.Git
         public void PublishPreparedRestore(FamilyIdentity familyIdentity, PreparedRestoreContent prepared)
         {
             RequirePrepared(familyIdentity, prepared);
-            var content = File.ReadAllBytes(prepared.PreparedFamilyFilePath);
+            // Revit has the staged file open at this point. Read the same immutable source blob
+            // from the repository instead of competing with Revit's file handle.
+            var content = ReadVersionFile(prepared.SourceVersionId, FamilyFileName);
             if (!string.Equals(ComputeSha256(content), prepared.BinaryChecksum, StringComparison.Ordinal))
                 throw new GitRepositoryCorruptedException("Prepared restore content failed checksum verification.");
             var temporaryPath = familyIdentity.Value + ".tmp-" + Guid.NewGuid().ToString("N");

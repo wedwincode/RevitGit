@@ -85,6 +85,7 @@
     <Compile Include="History\RefreshHistoryExternalEventHandler.cs" />
     <Compile Include="History\RevitExternalEventDispatcher.cs" />
     <Compile Include="Restore\RestoreReopenException.cs" />
+    <Compile Include="Restore\PendingRevitRestore.cs" />
     <Compile Include="Restore\RevitRestoreCoordinator.cs" />
     <Compile Include="Presentation\SaveVersionErrorPresenter.cs" />
     <Compile Include="Presentation\WpfSaveVersionCommentPrompt.cs" />

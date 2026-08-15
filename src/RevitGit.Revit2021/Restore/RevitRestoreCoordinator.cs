@@ -11,7 +11,7 @@ namespace RevitGit.Revit2021.Restore
 {
     internal sealed class RevitRestoreCoordinator
     {
-        public VersionSummary Execute(
+        public PendingRevitRestore Begin(
             UIApplication application,
             Document originalDocument,
             RestoreVersionUseCase useCase,
@@ -38,24 +38,12 @@ namespace RevitGit.Revit2021.Restore
                 var result = useCase.Finalize(prepared);
                 finalized = true;
 
-                try
-                {
-                    var reopened = application.OpenAndActivateDocument(originalPath).Document;
-                    stagedDocument.Close(false);
-                    stagedDocument = null;
-                    if (prepared.SourceSnapshot != null)
-                    {
-                        var live = new RevitFamilySnapshotExtractor().Extract(reopened);
-                        if (new FamilyDiffEngine().Compare(prepared.SourceSnapshot, live).HasChanges)
-                            throw new InvalidOperationException("The reopened family does not match the restored snapshot.");
-                    }
-                }
-                catch (Exception exception)
-                {
-                    throw new RestoreReopenException(originalPath, exception);
-                }
+                var closeCommand = RevitCommandId.LookupPostableCommandId(PostableCommand.Close);
+                if (!application.CanPostCommand(closeCommand))
+                    throw new InvalidOperationException("Revit cannot close the staged family document.");
+                application.PostCommand(closeCommand);
                 Debug.WriteLine("Family History restore stage open: " + openStage.ElapsedMilliseconds + " ms.");
-                return result;
+                return new PendingRevitRestore(originalPath, useCase, prepared, result);
             }
             catch
             {
@@ -91,9 +79,31 @@ namespace RevitGit.Revit2021.Restore
                 }
                 throw;
             }
+            finally { if (!finalized) useCase.Cleanup(prepared); }
+        }
+
+        public VersionSummary Complete(UIApplication application, PendingRevitRestore pending)
+        {
+            if (application == null) throw new ArgumentNullException(nameof(application));
+            if (pending == null) throw new ArgumentNullException(nameof(pending));
+            try
+            {
+                var reopened = application.OpenAndActivateDocument(pending.OriginalPath).Document;
+                if (pending.Prepared.SourceSnapshot != null)
+                {
+                    var live = new RevitFamilySnapshotExtractor().Extract(reopened);
+                    if (new FamilyDiffEngine().Compare(pending.Prepared.SourceSnapshot, live).HasChanges)
+                        throw new InvalidOperationException("The reopened family does not match the restored snapshot.");
+                }
+                return pending.Version;
+            }
+            catch (Exception exception)
+            {
+                throw new RestoreReopenException(pending.OriginalPath, exception);
+            }
             finally
             {
-                useCase.Cleanup(prepared);
+                pending.UseCase.Cleanup(pending.Prepared);
             }
         }
     }

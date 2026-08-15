@@ -30,6 +30,7 @@ namespace RevitGit.Revit2021.History
             _application.ViewActivated += OnViewActivated;
             _application.ControlledApplication.DocumentOpened += OnDocumentOpened;
             _application.ControlledApplication.DocumentClosed += OnDocumentClosed;
+            _application.Idling += OnIdling;
         }
 
         public void Show(UIApplication application)
@@ -72,12 +73,20 @@ namespace RevitGit.Revit2021.History
             _application.ViewActivated -= OnViewActivated;
             _application.ControlledApplication.DocumentOpened -= OnDocumentOpened;
             _application.ControlledApplication.DocumentClosed -= OnDocumentClosed;
+            _application.Idling -= OnIdling;
             _dispatcher.Dispose();
         }
 
         private void OnViewActivated(object sender, ViewActivatedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
         private void OnDocumentClosed(object sender, DocumentClosedEventArgs args) { if (!_isRestoring) RequestRefresh(); }
+
+        private void OnIdling(object sender, IdlingEventArgs args)
+        {
+            if (!_isRestoring) return;
+            var handler = (RefreshHistoryExternalEventHandler)_dispatcher.Handler;
+            if (handler.QueueRestoreContinuation()) _dispatcher.Raise();
+        }
 
         private void RestoreCompleted()
         {

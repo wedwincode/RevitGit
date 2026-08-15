@@ -20,6 +20,8 @@ namespace RevitGit.Revit2021.History
         private readonly HistoryViewModel _viewModel;
         private VersionId _pendingCurrentComparison;
         private VersionId _pendingRestore;
+        private PendingRevitRestore _pendingReopen;
+        private bool _continueRestore;
         private string _displayedFamilyPath;
         private readonly Action _restoreCompleted;
 
@@ -31,6 +33,12 @@ namespace RevitGit.Revit2021.History
 
         public void Execute(UIApplication application)
         {
+            if (_continueRestore)
+            {
+                _continueRestore = false;
+                CompleteRestore(application);
+                return;
+            }
             var comparison = _pendingCurrentComparison;
             _pendingCurrentComparison = null;
             if (comparison != null)
@@ -114,9 +122,17 @@ namespace RevitGit.Revit2021.History
             if (_pendingRestore == null) _pendingRestore = sourceVersionId;
         }
 
+        public bool QueueRestoreContinuation()
+        {
+            if (_pendingReopen == null || _continueRestore) return false;
+            _continueRestore = true;
+            return true;
+        }
+
         private void Restore(UIApplication application, VersionId sourceVersionId)
         {
             var prepared = default(RevitGit.Application.Models.PreparedRestoreContent);
+            var awaitingReopen = false;
             try
             {
                 var document = application?.ActiveUIDocument?.Document;
@@ -160,14 +176,8 @@ namespace RevitGit.Revit2021.History
                 prepared = useCase.Prepare(sourceVersionId);
                 var coordinatorInput = prepared;
                 prepared = null; // coordinator owns cleanup once execution starts, including failure paths
-                new RevitRestoreCoordinator().Execute(application, document, useCase, coordinatorInput);
-                var reopened = application.ActiveUIDocument?.Document;
-                if (reopened == null) throw new InvalidOperationException("The restored family is not active.");
-                var summary = RevitCompositionRoot.CreateGetHistoryUseCase(reopened).Execute();
-                var currentVariant = summary.Variants.Single(variant => variant.IsCurrent);
-                _viewModel.ShowHistory(Path.GetFileName(reopened.PathName), currentVariant.Name, summary.Versions);
-                _displayedFamilyPath = reopened.PathName;
-                TaskDialog.Show("История семейств", "Версия восстановлена.");
+                _pendingReopen = new RevitRestoreCoordinator().Begin(application, document, useCase, coordinatorInput);
+                awaitingReopen = true;
             }
             catch (RestoreReopenException exception)
             {
@@ -187,7 +197,7 @@ namespace RevitGit.Revit2021.History
             catch (Exception exception)
             {
                 Debug.WriteLine("Family History restore failed: " + exception);
-                _viewModel.ShowRestoreError("Не удалось восстановить версию." + exception.Message);
+                _viewModel.ShowRestoreError("Не удалось восстановить версию.");
             }
             finally
             {
@@ -201,6 +211,38 @@ namespace RevitGit.Revit2021.History
                     }
                     catch (Exception cleanupException) { Debug.WriteLine("Family History restore cleanup failed: " + cleanupException); }
                 }
+                if (!awaitingReopen) _restoreCompleted?.Invoke();
+            }
+        }
+
+        private void CompleteRestore(UIApplication application)
+        {
+            var pending = _pendingReopen;
+            _pendingReopen = null;
+            try
+            {
+                if (pending == null) throw new InvalidOperationException("No restore is awaiting reopen.");
+                new RevitRestoreCoordinator().Complete(application, pending);
+                var reopened = application.ActiveUIDocument?.Document;
+                if (reopened == null) throw new InvalidOperationException("The restored family is not active.");
+                var summary = RevitCompositionRoot.CreateGetHistoryUseCase(reopened).Execute();
+                var currentVariant = summary.Variants.Single(variant => variant.IsCurrent);
+                _viewModel.ShowHistory(Path.GetFileName(reopened.PathName), currentVariant.Name, summary.Versions);
+                _displayedFamilyPath = reopened.PathName;
+                TaskDialog.Show("История семейств", "Версия восстановлена.");
+            }
+            catch (RestoreReopenException exception)
+            {
+                Debug.WriteLine("Family History restored file reopen failed: " + exception);
+                _viewModel.ShowRestoreError("Семейство восстановлено на диске, но Revit не смог открыть его автоматически.\nОткройте файл снова:\n" + exception.FamilyPath);
+            }
+            catch (Exception exception)
+            {
+                Debug.WriteLine("Family History restore completion failed: " + exception);
+                _viewModel.ShowRestoreError("Версия восстановлена, но не удалось обновить окно истории.");
+            }
+            finally
+            {
                 _restoreCompleted?.Invoke();
             }
         }

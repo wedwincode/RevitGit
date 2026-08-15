@@ -20,9 +20,11 @@ namespace RevitGit.Application.Tests.Fakes
         public bool SaveCalled { get; private set; }
 
         public Exception SaveException { get; set; }
+        public Exception GetIdentityException { get; set; }
 
         public FamilyIdentity GetIdentity()
         {
+            if (GetIdentityException != null) throw GetIdentityException;
             return Identity;
         }
 

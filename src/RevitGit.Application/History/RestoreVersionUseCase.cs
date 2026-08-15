@@ -111,9 +111,9 @@ namespace RevitGit.Application.History
         {
             if (prepared == null) throw new ArgumentNullException(nameof(prepared));
             var preparedStore = RequirePreparedStore();
-            var familyIdentity = _documentGateway.GetIdentity();
-            if (!familyIdentity.Equals(prepared.FamilyIdentity))
-                throw new InvalidOperationException("The active family changed during restore.");
+            // The Revit document used during Prepare is intentionally closed before Finalize.
+            // The immutable prepared identity is the neutral concurrency boundary from here on.
+            var familyIdentity = prepared.FamilyIdentity;
             var history = _historyRepository.LoadRequired(familyIdentity);
             history.GetVersion(prepared.SourceVersionId);
             var current = history.GetVariant(history.CurrentVariantId).CurrentVersionId;

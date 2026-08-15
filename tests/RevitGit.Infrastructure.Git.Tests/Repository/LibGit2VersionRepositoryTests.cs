@@ -122,6 +122,33 @@ namespace RevitGit.Infrastructure.Git.Tests.Repository
         }
 
         [Fact]
+        public void PublishPreparedRestore_DoesNotReadStagedFileAfterRevitOpensIt()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var sourceBinary = new byte[] { 7, 0, 7 };
+                var history = fixture.CreateInitial("A", sourceBinary);
+                var source = history.Versions.Values.Single().Id;
+                var current = fixture.AddVersion(history, "B", new byte[] { 8, 0, 8 });
+                var prepared = fixture.Adapter.PrepareRestoreContent(fixture.Identity, source, current);
+
+                try
+                {
+                    using (File.Open(prepared.PreparedFamilyFilePath, FileMode.Open, FileAccess.Read, FileShare.None))
+                    {
+                        fixture.Adapter.PublishPreparedRestore(fixture.Identity, prepared);
+                    }
+
+                    Assert.Equal(sourceBinary, File.ReadAllBytes(fixture.FamilyPath));
+                }
+                finally
+                {
+                    fixture.Adapter.CleanupPreparedRestore(prepared);
+                }
+            }
+        }
+
+        [Fact]
         public void ReopenAndHistoricalRead_PreserveMappingsBranchAndCurrentWorkspace()
         {
             using (var fixture = new GitFixture())

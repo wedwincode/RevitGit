@@ -138,6 +138,20 @@ namespace RevitGit.Application.Tests.History
             Assert.Equal(0, fixture.Repository.SaveCount);
         }
 
+        [Fact]
+        public void FinalizeDoesNotAccessDocumentGatewayAfterPreparedDocumentWasClosed()
+        {
+            var fixture = CreateFixture();
+            var source = fixture.History.GetVariant(fixture.History.CurrentVariantId).CurrentVersionId;
+            fixture.History.AddVersion(InitialTime.AddMinutes(1), null);
+            var prepared = fixture.UseCase.Prepare(source);
+            fixture.DocumentGateway.GetIdentityException = new InvalidOperationException("Document is no longer valid.");
+
+            var restored = fixture.UseCase.Finalize(prepared);
+
+            Assert.Equal(source, restored.RestoredFromVersionId);
+        }
+
         private static Fixture CreateFixture()
         {
             var identity = new FamilyIdentity("family-1");
@@ -145,12 +159,13 @@ namespace RevitGit.Application.Tests.History
             var repository = new FakeHistoryRepository();
             repository.Seed(identity, history);
             var contentStore = new FakeVersionContentStore();
+            var gateway = new FakeFamilyDocumentGateway(identity);
             var useCase = new RestoreVersionUseCase(
                 repository,
-                new FakeFamilyDocumentGateway(identity),
+                gateway,
                 contentStore,
                 new FakeClock(InitialTime.AddMinutes(10)));
-            return new Fixture(history, repository, contentStore, useCase);
+            return new Fixture(history, repository, contentStore, gateway, useCase);
         }
 
         private sealed class Fixture
@@ -159,17 +174,20 @@ namespace RevitGit.Application.Tests.History
                 FamilyHistory history,
                 FakeHistoryRepository repository,
                 FakeVersionContentStore contentStore,
+                FakeFamilyDocumentGateway documentGateway,
                 RestoreVersionUseCase useCase)
             {
                 History = history;
                 Repository = repository;
                 ContentStore = contentStore;
+                DocumentGateway = documentGateway;
                 UseCase = useCase;
             }
 
             public FamilyHistory History { get; }
             public FakeHistoryRepository Repository { get; }
             public FakeVersionContentStore ContentStore { get; }
+            public FakeFamilyDocumentGateway DocumentGateway { get; }
             public RestoreVersionUseCase UseCase { get; }
         }
     }
