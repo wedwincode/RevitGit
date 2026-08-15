@@ -161,6 +161,28 @@ namespace RevitGit.Infrastructure.Git.Tests.Repository
         }
 
         [Fact]
+        public void InspectIntegrity_MissingMappedBranch_ReturnsStructuredIssue()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var history = fixture.CreateInitial("A", new byte[] { 1 });
+                var branchName = fixture.Adapter.GetInternalBranchName(history.CurrentVariantId);
+                using (var repository = new LibGit2Sharp.Repository(fixture.WorkDirectory))
+                {
+                    var orphan = repository.Branches.Add("orphan", repository.Head.Tip);
+                    Commands.Checkout(repository, orphan);
+                    repository.Branches.Remove(branchName);
+                }
+
+                var result = fixture.Adapter.InspectIntegrity(history);
+
+                Assert.False(result.IsValid);
+                Assert.Contains(result.Issues, issue => issue.Code == "VARIANT_BRANCH_MISSING"
+                    && issue.VariantId.Equals(history.CurrentVariantId));
+            }
+        }
+
+        [Fact]
         public void WrongVersionMetadata_IsReportedAsCorruption()
         {
             using (var fixture = new GitFixture())

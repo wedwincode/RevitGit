@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.UI", "src\RevitGit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.FileSystem", "src\RevitGit.Infrastructure.FileSystem\RevitGit.Infrastructure.FileSystem.csproj", "{A1000000-0000-0000-0000-000000000016}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{A1000000-0000-0000-0000-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Harness", "tools\RevitGit.Harness\RevitGit.Harness.csproj", "{A1000000-0000-0000-0000-000000000017}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A1000000-0000-0000-0000-000000000002}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Domain.Tests", "tests\RevitGit.Domain.Tests\RevitGit.Domain.Tests.csproj", "{A1000000-0000-0000-0000-000000000021}"
@@ -26,6 +30,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.Git.Tests", "tests\RevitGit.Infrastructure.Git.Tests\RevitGit.Infrastructure.Git.Tests.csproj", "{A1000000-0000-0000-0000-000000000023}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Infrastructure.FileSystem.Tests", "tests\RevitGit.Infrastructure.FileSystem.Tests\RevitGit.Infrastructure.FileSystem.Tests.csproj", "{A1000000-0000-0000-0000-000000000024}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitGit.Harness.Tests", "tests\RevitGit.Harness.Tests\RevitGit.Harness.Tests.csproj", "{A1000000-0000-0000-0000-000000000025}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -73,6 +79,14 @@ Global
 		{A1000000-0000-0000-0000-000000000024}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1000000-0000-0000-0000-000000000024}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000024}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000017}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000017}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000017}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000025}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000025}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000000-0000-0000-0000-000000000025}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000000-0000-0000-0000-000000000025}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -88,5 +102,7 @@ Global
 		{A1000000-0000-0000-0000-000000000022} = {A1000000-0000-0000-0000-000000000002}
 		{A1000000-0000-0000-0000-000000000023} = {A1000000-0000-0000-0000-000000000002}
 		{A1000000-0000-0000-0000-000000000024} = {A1000000-0000-0000-0000-000000000002}
+		{A1000000-0000-0000-0000-000000000017} = {A1000000-0000-0000-0000-000000000003}
+		{A1000000-0000-0000-0000-000000000025} = {A1000000-0000-0000-0000-000000000002}
 	EndGlobalSection
 EndGlobal

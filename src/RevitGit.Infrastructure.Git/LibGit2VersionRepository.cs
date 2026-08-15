@@ -49,6 +49,8 @@ namespace RevitGit.Infrastructure.Git
             }
         }
 
+        public string EmbeddedGitAssemblyVersion => typeof(Repository).Assembly.GetName().Version.ToString();
+
         public string CurrentInternalBranchName
         {
             get
@@ -227,57 +229,104 @@ namespace RevitGit.Infrastructure.Git
 
         public void ValidateIntegrity(FamilyHistory history)
         {
+            var result = InspectIntegrity(history);
+            if (!result.IsValid)
+                throw new GitRepositoryCorruptedException(result.Issues[0].Message);
+        }
+
+        public RepositoryValidationResult InspectIntegrity(FamilyHistory history)
+        {
             if (history == null) throw new ArgumentNullException(nameof(history));
+            var issues = new List<RepositoryValidationIssue>();
             if (!Repository.IsValid(_workDirectory))
-                throw new GitRepositoryCorruptedException("The internal version repository is missing.");
+            {
+                issues.Add(new RepositoryValidationIssue("GIT_REPOSITORY_MISSING", "The internal version repository is missing."));
+                return new RepositoryValidationResult(issues);
+            }
 
             try
             {
                 using (var repository = OpenRepository())
                 {
                     if (repository.Info.IsHeadDetached)
-                        throw new GitRepositoryCorruptedException("The current variant is detached from its internal branch.");
-                    var mapping = BuildVersionMap(repository);
+                        issues.Add(new RepositoryValidationIssue("HEAD_DETACHED", "The current variant is detached from its internal branch."));
+
+                    Dictionary<VersionId, Commit> mapping;
+                    try { mapping = BuildVersionMap(repository); }
+                    catch (GitStorageException exception)
+                    {
+                        issues.Add(new RepositoryValidationIssue("VERSION_MAPPING_INVALID", exception.Message));
+                        return new RepositoryValidationResult(issues);
+                    }
+
                     foreach (var version in history.Versions.Values)
                     {
                         Commit commit;
                         if (!mapping.TryGetValue(version.Id, out commit))
-                            throw new GitRepositoryCorruptedException("A stored version mapping is missing.");
-                        var metadata = ReadMetadata(commit);
+                        {
+                            issues.Add(new RepositoryValidationIssue("VERSION_MAPPING_MISSING", "A stored version mapping is missing.", version.Id));
+                            continue;
+                        }
+
+                        VersionMetadata metadata;
+                        try { metadata = ReadMetadata(commit); }
+                        catch (GitStorageException exception)
+                        {
+                            issues.Add(new RepositoryValidationIssue("VERSION_METADATA_INVALID", exception.Message, version.Id));
+                            continue;
+                        }
+
                         if (!Equals(metadata.VersionId, version.Id)
                             || !Equals(metadata.ParentVersionId, version.ParentVersionId)
                             || !Equals(metadata.RestoredFromVersionId, version.RestoredFromVersionId)
                             || metadata.CreatedAt != version.CreatedAt
                             || !string.Equals(metadata.Comment, version.Comment, StringComparison.Ordinal))
-                            throw new GitRepositoryCorruptedException("Stored version metadata does not match family history.");
+                            issues.Add(new RepositoryValidationIssue("VERSION_METADATA_MISMATCH", "Stored version metadata does not match family history.", version.Id));
+
                         var parents = commit.Parents.ToList();
                         if (parents.Count > 1)
-                            throw new GitRepositoryCorruptedException("A stored version has more than one parent.");
-                        var actualParent = parents.Count == 0 ? null : ReadMetadata(parents[0]).VersionId;
-                        if (!Equals(actualParent, version.ParentVersionId))
-                            throw new GitRepositoryCorruptedException("Stored version parent relationship is inconsistent.");
+                        {
+                            issues.Add(new RepositoryValidationIssue("MULTIPLE_PARENTS", "A stored version has more than one parent.", version.Id));
+                        }
+                        else
+                        {
+                            var actualParent = parents.Count == 0 ? null : ReadMetadata(parents[0]).VersionId;
+                            if (!Equals(actualParent, version.ParentVersionId))
+                                issues.Add(new RepositoryValidationIssue("PARENT_MISMATCH", "Stored version parent relationship is inconsistent.", version.Id));
+                        }
                     }
+
                     if (mapping.Count != history.Versions.Count)
-                        throw new GitRepositoryCorruptedException("The internal repository contains versions absent from metadata.");
+                        issues.Add(new RepositoryValidationIssue("UNKNOWN_GIT_VERSIONS", "The internal repository contains versions absent from metadata."));
 
                     foreach (var variant in history.Variants.Values)
                     {
                         var branch = repository.Branches[GitRefNameMapper.ForVariant(variant.Id)];
                         if (branch == null)
-                            throw new GitRepositoryCorruptedException("A mapped variant branch is missing.");
-                        if (!Equals(ReadMetadata(branch.Tip).VersionId, variant.CurrentVersionId))
-                            throw new GitRepositoryCorruptedException("A variant tip does not match family history.");
+                        {
+                            issues.Add(new RepositoryValidationIssue("VARIANT_BRANCH_MISSING", "A mapped variant branch is missing.", null, variant.Id));
+                        }
+                        else if (!Equals(ReadMetadata(branch.Tip).VersionId, variant.CurrentVersionId))
+                        {
+                            issues.Add(new RepositoryValidationIssue("VARIANT_TIP_MISMATCH", "A variant tip does not match family history.", variant.CurrentVersionId, variant.Id));
+                        }
                     }
-                    if (!string.Equals(repository.Head.FriendlyName,
+
+                    if (!repository.Info.IsHeadDetached && !string.Equals(repository.Head.FriendlyName,
                         GitRefNameMapper.ForVariant(history.CurrentVariantId), StringComparison.Ordinal))
-                        throw new GitRepositoryCorruptedException("The current variant does not match the attached internal branch.");
+                        issues.Add(new RepositoryValidationIssue("CURRENT_VARIANT_MISMATCH", "The current variant does not match the attached internal branch.", null, history.CurrentVariantId));
                 }
             }
-            catch (GitStorageException) { throw; }
+            catch (GitStorageException exception)
+            {
+                issues.Add(new RepositoryValidationIssue("GIT_VALIDATION_FAILED", exception.Message));
+            }
             catch (LibGit2SharpException exception)
             {
-                throw new GitRepositoryCorruptedException("The internal version repository could not be validated.", exception);
+                issues.Add(new RepositoryValidationIssue("GIT_VALIDATION_FAILED", "The internal version repository could not be validated: " + exception.Message));
             }
+
+            return new RepositoryValidationResult(issues);
         }
 
         private void CommitVersion(FamilyHistory history, HistoryVersion version)

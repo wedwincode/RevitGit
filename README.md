@@ -98,6 +98,37 @@ write failing test
 
 The majority of tests must not require Revit.
 
+## Developer commands
+
+The solution uses classic .NET Framework 4.8 projects. Build with the MSBuild configured in Rider or Visual Studio 2022; do not use `dotnet build`.
+
+```powershell
+# Build Debug (from a Visual Studio 2022 Developer PowerShell)
+msbuild RevitGit.sln /t:Restore,Build /p:Configuration=Debug
+
+# Test all headless projects (or use Rider: Run All Tests in Solution)
+vstest.console.exe `
+  tests\RevitGit.Domain.Tests\bin\Debug\RevitGit.Domain.Tests.dll `
+  tests\RevitGit.Application.Tests\bin\Debug\RevitGit.Application.Tests.dll `
+  tests\RevitGit.Infrastructure.FileSystem.Tests\bin\Debug\RevitGit.Infrastructure.FileSystem.Tests.dll `
+  tests\RevitGit.Infrastructure.Git.Tests\bin\Debug\RevitGit.Infrastructure.Git.Tests.dll `
+  tests\RevitGit.Harness.Tests\bin\Debug\RevitGit.Harness.Tests.dll `
+  /Platform:x64
+
+# Run the headless Harness
+tools\RevitGit.Harness\bin\Debug\RevitGit.Harness.exe help
+tools\RevitGit.Harness\bin\Debug\RevitGit.Harness.exe scenario branching
+tools\RevitGit.Harness\bin\Debug\RevitGit.Harness.exe scenario branching --keep
+tools\RevitGit.Harness\bin\Debug\RevitGit.Harness.exe validate C:\Work\Door.rfa
+
+# Fast Harness validation
+powershell -ExecutionPolicy Bypass -File scripts\run-harness-smoke.ps1 -Configuration Debug
+```
+
+Run tests through Rider's test runner. `RevitGit.Harness.Tests` covers CLI behavior; the Domain, Application, FileSystem, and Git test projects cover the core layers. Failed scenarios always retain their isolated workspace. Successful scenarios remove it unless `--keep` is supplied.
+
+Current transition state: `history.json` remains the canonical application history representation. The Git graph is synchronized backing topology and is validated against `history.json`; the Harness detects divergence but never repairs it. The legacy `versions/` directory remains in the filesystem layout, while the Git adapter stores version content only in Git.
+
 ## Build modes
 
 Two build paths are expected:
@@ -130,4 +161,3 @@ Autodesk DLLs must not be committed to this repository.
 ## Non-goals
 
 Do not add merge, rebase, remotes, GitHub integration, cloud sync, or semantic RFA merge unless the project specification is explicitly changed.
-

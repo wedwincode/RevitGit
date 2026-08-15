@@ -13,6 +13,8 @@
     <Compile Include="Exceptions\GitStorageException.cs" />
     <Compile Include="GitRefNameMapper.cs" />
     <Compile Include="LibGit2VersionRepository.cs" />
+    <Compile Include="RepositoryValidationIssue.cs" />
+    <Compile Include="RepositoryValidationResult.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

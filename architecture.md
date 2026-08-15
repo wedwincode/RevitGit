@@ -519,6 +519,8 @@ roundtrip-repository
 
 Each scenario runs in a temporary directory and exits non-zero on failure.
 
+Epic 7 implements this developer tool at `tools/RevitGit.Harness`. Its manual composition root connects the Application use cases to the real filesystem and LibGit2Sharp adapters without Revit, UI, WPF, or an external `git.exe`. Scenarios use deterministic snapshots and time, retain failed workspaces, and validate the Epic 6 transition topology. Validation is detection-only: `history.json` remains canonical application history metadata/topology, while the Git graph is its synchronized backing mirror; no repair or Git-only migration is performed.
+
 ### Revit harness
 
 A special developer-only Revit command, excluded from release UI if desired, that validates adapter extraction against fixture families.

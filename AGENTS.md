@@ -52,6 +52,8 @@ For behavior changes, use red-green-refactor unless the change is purely mechani
 7. Run the affected project suite.
 8. Run `build/test-core.ps1` before considering the task complete when available.
 
+For changes affecting history, variants, restore, storage, or semantic diff, run the relevant `RevitGit.Harness` scenario after tests. Prefer this headless verification before Revit-specific work whenever the behavior can be reproduced without Autodesk Revit.
+
 Do not write production behavior first and add a vacuous test afterward.
 
 If a behavior cannot reasonably be unit-tested because it is at the Autodesk boundary, isolate it behind an interface and test everything around it. Add or update a Revit smoke scenario for the adapter behavior.
@@ -261,4 +263,3 @@ A task is not complete until applicable items are true:
 - commit Revit API DLLs;
 - introduce a database just because one may be useful later;
 - implement detailed geometry matching before parameter/type/formula diff is solid.
-
