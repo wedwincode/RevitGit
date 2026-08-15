@@ -38,6 +38,7 @@ namespace RevitGit.Infrastructure.Git
             _workDirectory = Path.Combine(_repositoryDirectory, "repo");
             _metadataRepository = metadataRepository ?? throw new ArgumentNullException(nameof(metadataRepository));
             _snapshotContentProvider = snapshotContentProvider ?? throw new ArgumentNullException(nameof(snapshotContentProvider));
+            CleanupAbandonedPendingDirectories();
         }
 
         public int CommitCount
@@ -149,14 +150,16 @@ namespace RevitGit.Infrastructure.Git
             var pendingDirectory = Path.Combine(_repositoryDirectory, ".pending-" + versionId.Value.ToString("N"));
             try
             {
+                var familyContent = ReadAllBytesShared(familyIdentity.Value);
                 Directory.CreateDirectory(_repositoryDirectory);
                 Directory.CreateDirectory(pendingDirectory);
-                File.WriteAllBytes(Path.Combine(pendingDirectory, FamilyFileName), File.ReadAllBytes(familyIdentity.Value));
+                File.WriteAllBytes(Path.Combine(pendingDirectory, FamilyFileName), familyContent);
                 File.WriteAllBytes(Path.Combine(pendingDirectory, SnapshotFileName), snapshot);
                 _pending = new PendingVersion(versionId, pendingDirectory);
             }
             catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
             {
+                TryDeleteDirectory(pendingDirectory);
                 throw new GitStorageException("The version content could not be prepared.", exception);
             }
         }
@@ -549,9 +552,44 @@ namespace RevitGit.Infrastructure.Git
             _pending = null;
         }
 
+        private void CleanupAbandonedPendingDirectories()
+        {
+            if (!Directory.Exists(_repositoryDirectory)) return;
+            try
+            {
+                foreach (var directory in Directory.GetDirectories(
+                    _repositoryDirectory,
+                    ".pending-*",
+                    SearchOption.TopDirectoryOnly))
+                {
+                    Directory.Delete(directory, true);
+                }
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                throw new GitStorageException("Abandoned version content could not be cleaned.", exception);
+            }
+        }
+
         private static void TryDelete(string path)
         {
             try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
+
+        private static byte[] ReadAllBytesShared(string path)
+        {
+            // Revit keeps a write-capable handle to the active family after Document.Save().
+            // We only read, but must keep sharing write/delete access so that handle remains valid.
+            using (var source = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete))
+            using (var destination = new MemoryStream())
+            {
+                source.CopyTo(destination);
+                return destination.ToArray();
+            }
         }
 
         private static void TryDeleteDirectory(string path)

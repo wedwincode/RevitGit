@@ -630,3 +630,21 @@ new version on the current variant tip; no reset, revert, merge, or rebase opera
 is used. LibGit2Sharp 0.31.0 and NativeBinaries 2.0.323 are deployed with the add-in;
 the Windows x64 runtime is loaded from `lib/win32/x64/git2-3f4182d.dll` without an
 external Git installation.
+
+## 22. Revit Save Version vertical slice (Epic 10)
+
+The production ribbon command uses `TransactionMode.Manual` but opens no Revit
+transaction. A modal WPF comment dialog is shown first; cancellation returns before
+any document or storage operation. The existing Application `SaveVersionUseCase`
+then calls a Revit implementation of `IFamilyDocumentGateway.Save`, after which the
+Git content adapter requests the neutral snapshot through `IFamilySnapshotProvider`.
+This preserves the required `Document.Save -> snapshot -> binary/snapshot storage`
+ordering without leaking `Autodesk.Revit.DB.Document` into Application.
+
+`SaveVersionUseCase` initializes a missing history as the single first version and
+uses the explicit initial variant name supplied by the Revit composition root. An
+existing history is loaded and validated before appending, so persisted
+`CurrentVariantId` remains authoritative. A Revit-side lazy composition adapter
+opens or initializes `FamilyRepositoryManager` only after the Revit save succeeds,
+then composes `FileSystemHistoryRepository` and `LibGit2VersionRepository`. A final
+load validates the transition `history.json`/Git topology; no repair is attempted.

@@ -2,7 +2,9 @@ using System;
 using RevitGit.Application.Abstractions;
 using RevitGit.Application.Exceptions;
 using RevitGit.Application.Models;
+using RevitGit.Domain.History;
 using RevitGit.Domain.Identifiers;
+using HistoryVersion = RevitGit.Domain.History.Version;
 
 namespace RevitGit.Application.History
 {
@@ -27,9 +29,12 @@ namespace RevitGit.Application.History
 
         public VersionSummary Execute(string comment)
         {
+            return Execute(comment, "Main");
+        }
+
+        public VersionSummary Execute(string comment, string initialVariantName)
+        {
             var familyIdentity = _documentGateway.GetIdentity();
-            var history = _historyRepository.LoadRequired(familyIdentity);
-            var versionId = VersionId.New();
 
             try
             {
@@ -41,6 +46,18 @@ namespace RevitGit.Application.History
                     ApplicationFailureStage.SaveDocument,
                     "The family document could not be saved.",
                     exception);
+            }
+
+            var history = _historyRepository.Load(familyIdentity);
+            var isInitialVersion = history == null;
+            var createdAt = _clock.UtcNow;
+            var versionId = VersionId.New();
+            HistoryVersion version = null;
+            if (isInitialVersion)
+            {
+                history = FamilyHistory.Create(initialVariantName, createdAt, comment);
+                version = history.GetVersion(history.GetVariant(history.CurrentVariantId).CurrentVersionId);
+                versionId = version.Id;
             }
 
             try
@@ -55,7 +72,11 @@ namespace RevitGit.Application.History
                     exception);
             }
 
-            var version = history.AddVersion(versionId, _clock.UtcNow, comment);
+            if (!isInitialVersion)
+            {
+                version = history.AddVersion(versionId, createdAt, comment);
+            }
+
             _historyRepository.SaveUpdated(familyIdentity, history);
 
             return new VersionSummary(

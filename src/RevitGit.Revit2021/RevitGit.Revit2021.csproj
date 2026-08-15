@@ -31,6 +31,9 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
     <Reference Include="RevitAPI">
       <HintPath>$(Revit2021InstallDir)\RevitAPI.dll</HintPath>
       <Private>false</Private>
@@ -45,14 +48,42 @@
       <Project>{A1000000-0000-0000-0000-000000000011}</Project>
       <Name>RevitGit.Domain</Name>
     </ProjectReference>
+    <ProjectReference Include="..\RevitGit.Application\RevitGit.Application.csproj">
+      <Project>{A1000000-0000-0000-0000-000000000012}</Project>
+      <Name>RevitGit.Application</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RevitGit.Infrastructure.FileSystem\RevitGit.Infrastructure.FileSystem.csproj">
+      <Project>{A1000000-0000-0000-0000-000000000016}</Project>
+      <Name>RevitGit.Infrastructure.FileSystem</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RevitGit.Infrastructure.Git\RevitGit.Infrastructure.Git.csproj">
+      <Project>{A1000000-0000-0000-0000-000000000013}</Project>
+      <Name>RevitGit.Infrastructure.Git</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RevitGit.UI\RevitGit.UI.csproj">
+      <Project>{A1000000-0000-0000-0000-000000000015}</Project>
+      <Name>RevitGit.UI</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Availability\FamilyDocumentCommandAvailability.cs" />
+    <Compile Include="Commands\ISaveVersionOperation.cs" />
+    <Compile Include="Commands\SaveVersionCommand.cs" />
+    <Compile Include="Commands\SaveVersionCommandWorkflow.cs" />
+    <Compile Include="Commands\SaveVersionCommentPromptResult.cs" />
+    <Compile Include="Composition\LazyFamilyHistoryStore.cs" />
+    <Compile Include="Composition\RevitCompositionRoot.cs" />
+    <Compile Include="Diagnostics\SaveVersionTimings.cs" />
     <Compile Include="DiagnosticCommand.cs" />
+    <Compile Include="Documents\RevitFamilyDocumentGateway.cs" />
+    <Compile Include="Presentation\SaveVersionErrorPresenter.cs" />
+    <Compile Include="Presentation\WpfSaveVersionCommentPrompt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RevitGitApplication.cs" />
     <Compile Include="Snapshots\CanonicalGeometryFingerprint.cs" />
     <Compile Include="Snapshots\RevitFamilyIdentityResolver.cs" />
     <Compile Include="Snapshots\RevitFamilySnapshotExtractor.cs" />
+    <Compile Include="Snapshots\RevitFamilySnapshotProvider.cs" />
     <Compile Include="Snapshots\RevitGeometryFingerprintBuilder.cs" />
     <Compile Include="Snapshots\RevitParameterDataTypeMapper.cs" />
     <Compile Include="Snapshots\RevitParameterStableKeyBuilder.cs" />

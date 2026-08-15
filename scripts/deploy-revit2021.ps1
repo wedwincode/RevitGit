@@ -17,14 +17,32 @@ if ([string]::IsNullOrWhiteSpace($BuildOutput)) {
 
 $runtimeAssemblyNames = @(
     "RevitGit.Revit2021.dll",
-    "RevitGit.Domain.dll"
+    "RevitGit.Application.dll",
+    "RevitGit.Domain.dll",
+    "RevitGit.Infrastructure.FileSystem.dll",
+    "RevitGit.Infrastructure.Git.dll",
+    "RevitGit.UI.dll",
+    "LibGit2Sharp.dll"
 )
+
+$libGitConfigName = "LibGit2Sharp.dll.config"
+$nativeRelativePath = "lib\win32\x64\git2-3f4182d.dll"
 
 foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
     $sourceAssembly = Join-Path $BuildOutput $runtimeAssemblyName
     if (-not (Test-Path -LiteralPath $sourceAssembly -PathType Leaf)) {
         throw "$runtimeAssemblyName was not found. Build the $Configuration configuration first: $sourceAssembly"
     }
+}
+
+$libGitConfig = Join-Path $BuildOutput $libGitConfigName
+if (-not (Test-Path -LiteralPath $libGitConfig -PathType Leaf)) {
+    throw "$libGitConfigName was not found in the Revit runtime output: $libGitConfig"
+}
+
+$nativeSource = Join-Path $BuildOutput $nativeRelativePath
+if (-not (Test-Path -LiteralPath $nativeSource -PathType Leaf)) {
+    throw "The Windows x64 native libgit2 binary was not found: $nativeSource"
 }
 
 if ([string]::IsNullOrWhiteSpace($Destination)) {
@@ -52,6 +70,10 @@ foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
         -Destination (Join-Path $pluginDirectory $runtimeAssemblyName) `
         -Force
 }
+Copy-Item -LiteralPath $libGitConfig -Destination (Join-Path $pluginDirectory $libGitConfigName) -Force
+$nativeDestinationDirectory = Join-Path $pluginDirectory "lib\win32\x64"
+New-Item -ItemType Directory -Path $nativeDestinationDirectory -Force | Out-Null
+Copy-Item -LiteralPath $nativeSource -Destination (Join-Path $nativeDestinationDirectory "git2-3f4182d.dll") -Force
 
 $escapedAssemblyPath = [System.Security.SecurityElement]::Escape($deployedAssembly)
 $manifest = (Get-Content -LiteralPath $templatePath -Raw).Replace("__REVITGIT_ASSEMBLY_PATH__", $escapedAssemblyPath)
@@ -65,3 +87,5 @@ if ((Test-Path -LiteralPath (Join-Path $pluginDirectory "RevitAPI.dll")) -or
 Write-Output "RevitGit deployed to: $destinationRoot"
 Write-Output "Manifest: $manifestPath"
 Write-Output "Assembly: $deployedAssembly"
+Write-Output "Managed runtime: $($runtimeAssemblyNames -join ', ')"
+Write-Output "Native runtime: $nativeRelativePath"

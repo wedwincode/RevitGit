@@ -62,8 +62,22 @@ try {
     Assert-True ($addIn.Assembly -eq "__REVITGIT_ASSEMBLY_PATH__") "Manifest assembly placeholder is incorrect."
 
     New-Item -ItemType Directory -Path $buildOutput -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $buildOutput "RevitGit.Revit2021.dll") -Value "test assembly"
-    Set-Content -LiteralPath (Join-Path $buildOutput "RevitGit.Domain.dll") -Value "test domain assembly"
+    $runtimeAssemblyNames = @(
+        "RevitGit.Revit2021.dll",
+        "RevitGit.Application.dll",
+        "RevitGit.Domain.dll",
+        "RevitGit.Infrastructure.FileSystem.dll",
+        "RevitGit.Infrastructure.Git.dll",
+        "RevitGit.UI.dll",
+        "LibGit2Sharp.dll"
+    )
+    foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
+        Set-Content -LiteralPath (Join-Path $buildOutput $runtimeAssemblyName) -Value "test assembly"
+    }
+    Set-Content -LiteralPath (Join-Path $buildOutput "LibGit2Sharp.dll.config") -Value "test config"
+    $nativeBuildDirectory = Join-Path $buildOutput "lib\win32\x64"
+    New-Item -ItemType Directory -Path $nativeBuildDirectory -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $nativeBuildDirectory "git2-3f4182d.dll") -Value "test native assembly"
     & $deployScript -Configuration Debug -Destination $destination -BuildOutput $buildOutput
 
     $manifestPath = Join-Path $destination "RevitGit.addin"
@@ -72,6 +86,11 @@ try {
     Assert-True (Test-Path -LiteralPath $manifestPath) "Deploy did not create the manifest."
     Assert-True (Test-Path -LiteralPath $deployedAssembly) "Deploy did not copy the add-in assembly."
     Assert-True (Test-Path -LiteralPath $deployedDomainAssembly) "Deploy did not copy the required Domain assembly."
+    foreach ($runtimeAssemblyName in $runtimeAssemblyNames) {
+        Assert-True (Test-Path -LiteralPath (Join-Path $destination "RevitGit\$runtimeAssemblyName")) "Deploy did not copy $runtimeAssemblyName."
+    }
+    Assert-True (Test-Path -LiteralPath (Join-Path $destination "RevitGit\LibGit2Sharp.dll.config")) "Deploy did not copy LibGit2Sharp.dll.config."
+    Assert-True (Test-Path -LiteralPath (Join-Path $destination "RevitGit\lib\win32\x64\git2-3f4182d.dll")) "Deploy did not copy the Windows x64 native libgit2 binary."
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $destination "RevitGit\RevitAPI.dll"))) "Deploy copied RevitAPI.dll."
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $destination "RevitGit\RevitAPIUI.dll"))) "Deploy copied RevitAPIUI.dll."
 

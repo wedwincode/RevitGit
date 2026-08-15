@@ -225,6 +225,16 @@ For Revit-specific changes:
 4. deploy explicitly;
 5. run the manual Revit smoke checklist.
 
+For changes to the Revit Save Version vertical slice:
+
+1. run focused unit tests;
+2. run all headless tests;
+3. run the Harness smoke scenarios;
+4. build the Revit project;
+5. deploy explicitly;
+6. manually create a version in a saved test `.rfa`;
+7. run `RevitGit.Harness validate <path-to-rfa>` against the resulting history.
+
 Manual Revit testing never replaces headless verification.
 
 For Revit snapshot extraction changes:

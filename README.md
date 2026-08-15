@@ -4,7 +4,7 @@ Offline version history for Autodesk Revit family development.
 
 ## Status
 
-Milestone 2 development: the Revit 2021 add-in skeleton and family snapshot extractor are available.
+Milestone 2 development: Revit 2021 can create explicit family versions end-to-end; history browsing and restore UI are still pending.
 
 Target: Autodesk Revit 2021 on Windows.
 
@@ -193,7 +193,7 @@ The default destination is `%APPDATA%\Autodesk\Revit\Addins\2021`. A safe custom
     -Destination C:\Temp\RevitAddinsTest
 ```
 
-The deployment contains only `RevitGit.addin`, `RevitGit\RevitGit.Revit2021.dll`, and the required neutral `RevitGit\RevitGit.Domain.dll`. It does not contain Autodesk API assemblies or Milestone 1 Git/native dependencies.
+The deployment contains the add-in plus Domain/Application, filesystem, UI, LibGit2Sharp, and Windows x64 native libgit2 runtime files beside it. It never copies `RevitAPI.dll` or `RevitAPIUI.dll` and does not require an external `git.exe`.
 
 ### Remove
 
@@ -241,6 +241,22 @@ Revit 2021 `Definition.ParameterType` values are mapped into the neutral Domain 
 Length, area, volume, and angle values are converted with Revit `UnitUtils` into millimetres, square millimetres, cubic millimetres, and degrees. Numbers remain unitless. Domain then applies the schema 1 six-decimal numeric policy. Revit display units and active-view formatting are never used.
 
 The `Проверка` diagnostic command extracts the active `.rfa` twice, reports a short summary and timing, and verifies repeated snapshot equality. Project documents are reported as not applicable; no snapshot file is written.
+
+## Creating a version in Revit
+
+1. Open an already saved `.rfa` family.
+2. On the `История семейств` ribbon tab choose `Сохранить версию`.
+3. Optionally enter a comment and choose `Сохранить`.
+
+The command saves the active Revit document first, extracts its semantic snapshot, and creates or opens the adjacent hidden `.familyhistory` storage automatically. Cancelling the comment dialog does not save the Revit document and does not change history.
+
+### Current MVP limitations
+
+- only family documents already saved as `.rfa` can create versions;
+- versions are created only by the explicit ribbon command, not by ordinary Revit Save;
+- there is no production history, compare, restore, or variants UI yet;
+- Revit save/version storage is synchronous and has no progress UI;
+- real Revit validation must be completed with the manual smoke checklist, followed by Harness `validate`, `inspect`, and `compare`.
 
 ### Current snapshot limitations
 

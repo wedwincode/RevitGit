@@ -143,6 +143,58 @@ namespace RevitGit.Infrastructure.Git.Tests.Repository
         }
 
         [Fact]
+        public void StoreCurrentVersion_ReadsFamilyWhileRevitStyleWriteHandleRemainsOpen()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var expected = new byte[] { 4, 3, 2, 1 };
+                File.WriteAllBytes(fixture.FamilyPath, expected);
+                var history = FamilyHistory.Create("Основной", fixture.Clock.UtcNow, "A");
+                var versionId = history.Versions.Values.Single().Id;
+
+                using (File.Open(
+                    fixture.FamilyPath,
+                    FileMode.Open,
+                    FileAccess.ReadWrite,
+                    FileShare.ReadWrite | FileShare.Delete))
+                {
+                    fixture.Adapter.StoreCurrentVersion(fixture.Identity, versionId);
+                }
+
+                fixture.Adapter.Save(fixture.Identity, history);
+                Assert.Equal(expected, fixture.Adapter.ReadVersionFile(versionId, "family.rfa"));
+            }
+        }
+
+        [Fact]
+        public void StoreCurrentVersion_ReadFailureDoesNotLeavePendingDirectory()
+        {
+            using (var fixture = new GitFixture())
+            using (File.Open(fixture.FamilyPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                Assert.Throws<GitStorageException>(
+                    () => fixture.Adapter.StoreCurrentVersion(fixture.Identity, VersionId.New()));
+
+                Assert.Empty(Directory.GetDirectories(fixture.RepositoryDirectory, ".pending-*"));
+            }
+        }
+
+        [Fact]
+        public void ReopenRemovesAbandonedPendingDirectory()
+        {
+            using (var fixture = new GitFixture())
+            {
+                var abandoned = Path.Combine(fixture.RepositoryDirectory, ".pending-abandoned");
+                Directory.CreateDirectory(abandoned);
+                File.WriteAllBytes(Path.Combine(abandoned, "partial"), new byte[] { 1 });
+
+                fixture.Reopen();
+
+                Assert.False(Directory.Exists(abandoned));
+            }
+        }
+
+        [Fact]
         public void MissingMappedBranch_IsReportedAsCorruption()
         {
             using (var fixture = new GitFixture())

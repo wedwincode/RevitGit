@@ -14,6 +14,48 @@ namespace RevitGit.Infrastructure.Git.Tests.Integration
     public sealed class ApplicationGitIntegrationTests
     {
         [Fact]
+        public void SaveVersionOnRepositoryWithoutHistoryCreatesOneInitialVersion()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "RevitGit-GitFirstSave-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var familyPath = Path.Combine(root, "Door.rfa");
+                File.WriteAllBytes(familyPath, new byte[] { 1, 2, 3 });
+                var clock = new FixedClock();
+                var document = new DocumentGateway(familyPath);
+                var manager = new FamilyRepositoryManager(clock);
+                var familyRepository = manager.Initialize(familyPath);
+                var metadata = new FileSystemHistoryRepository(manager);
+                var adapter = new LibGit2VersionRepository(
+                    familyRepository.Paths.RepositoryDirectory,
+                    metadata,
+                    () => new byte[] { 9, 8, 7 });
+
+                var created = new SaveVersionUseCase(adapter, document, adapter, clock)
+                    .Execute("Начальная версия", "Основной");
+
+                var history = adapter.Load(document.GetIdentity());
+                Assert.Single(history.Versions);
+                Assert.Single(history.Variants);
+                Assert.Equal("Основной", history.GetVariant(history.CurrentVariantId).Name);
+                Assert.Equal(created.Id, history.GetVariant(history.CurrentVariantId).CurrentVersionId);
+                Assert.Equal("Начальная версия", created.Comment);
+                Assert.Equal(1, adapter.CommitCount);
+                Assert.Equal(new byte[] { 9, 8, 7 }, adapter.ReadVersionFile(created.Id, "snapshot.json"));
+            }
+            finally
+            {
+                if (Directory.Exists(root))
+                {
+                    foreach (var path in Directory.GetFileSystemEntries(root, "*", SearchOption.AllDirectories))
+                        File.SetAttributes(path, FileAttributes.Normal);
+                    Directory.Delete(root, true);
+                }
+            }
+        }
+
+        [Fact]
         public void CoreUseCases_RunAgainstRealGitBackedContracts()
         {
             var root = Path.Combine(Path.GetTempPath(), "RevitGit-GitApplication-" + Guid.NewGuid().ToString("N"));

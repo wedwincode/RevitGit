@@ -32,6 +32,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\RevitGit.Application\RevitGit.Application.csproj"><Project>{A1000000-0000-0000-0000-000000000012}</Project><Name>RevitGit.Application</Name></ProjectReference>
     <ProjectReference Include="..\..\src\RevitGit.Domain\RevitGit.Domain.csproj"><Project>{A1000000-0000-0000-0000-000000000011}</Project><Name>RevitGit.Domain</Name></ProjectReference>
     <ProjectReference Include="..\..\src\RevitGit.Revit2021\RevitGit.Revit2021.csproj"><Project>{A1000000-0000-0000-0000-000000000014}</Project><Name>RevitGit.Revit2021</Name></ProjectReference>
   </ItemGroup>
@@ -40,6 +41,7 @@
     <Compile Include="RevitFamilyIdentityResolverTests.cs" />
     <Compile Include="RevitParameterDataTypeMapperTests.cs" />
     <Compile Include="RevitParameterValuePolicyTests.cs" />
+    <Compile Include="SaveVersionCommandWorkflowTests.cs" />
     <Compile Include="RevitUnitNormalizerTests.cs" />
   </ItemGroup>
   <ItemGroup>

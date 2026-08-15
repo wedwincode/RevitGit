@@ -32,6 +32,32 @@ namespace RevitGit.Application.Tests.History
         }
 
         [Fact]
+        public void SaveVersionInitializesMissingHistoryAsSingleCommentedVersion()
+        {
+            var operations = new List<string>();
+            var identity = new FamilyIdentity("family-1");
+            var repository = new FakeHistoryRepository(operations);
+            var document = new FakeFamilyDocumentGateway(identity, operations);
+            var contentStore = new FakeVersionContentStore(operations);
+            var useCase = new SaveVersionUseCase(
+                repository,
+                document,
+                contentStore,
+                new FakeClock(InitialTime));
+
+            var created = useCase.Execute("Начальная версия", "Основной");
+
+            var history = repository.Load(identity);
+            Assert.Single(history.Versions);
+            Assert.Single(history.Variants);
+            Assert.Equal("Основной", history.GetVariant(history.CurrentVariantId).Name);
+            Assert.Equal(created.Id, history.GetVariant(history.CurrentVariantId).CurrentVersionId);
+            Assert.Equal("Начальная версия", created.Comment);
+            Assert.Null(created.ParentVersionId);
+            Assert.Equal(new[] { "document-save", "content-store", "history-save" }, operations);
+        }
+
+        [Fact]
         public void SubsequentVersionUsesPreviousCurrentVersionAsParent()
         {
             var fixture = CreateFixture();
