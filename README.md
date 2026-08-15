@@ -229,8 +229,8 @@ The optional helper uses an explicit parameter, environment/local override, then
 
 The v1 snapshot contains:
 
-- family name from `Document.OwnerFamily.Name`;
-- family category display name from `Document.OwnerFamily.FamilyCategory.Name`;
+- family name from the owner `Family`; if `Document.OwnerFamily` is unavailable, the extractor finds the `Family` whose `IsOwnerFamily` is true and uses `Document.Title` without `.rfa` only as the final name fallback;
+- family category display name from the resolved owner `Family.FamilyCategory.Name`;
 - family parameters with stable key, display name, data type, instance/type scope, and formula;
 - every family type and its meaningful type-parameter values;
 - typed string, integer, double, boolean, null, material, and named element-reference values;

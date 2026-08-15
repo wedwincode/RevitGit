@@ -25,18 +25,7 @@ namespace RevitGit.Revit2021.Snapshots
 
             try
             {
-                var ownerFamily = document.OwnerFamily;
-                if (ownerFamily == null || string.IsNullOrWhiteSpace(ownerFamily.Name))
-                {
-                    throw new SnapshotExtractionException("The family name is unavailable from Document.OwnerFamily.");
-                }
-
-                var category = ownerFamily.FamilyCategory;
-                if (category == null || string.IsNullOrWhiteSpace(category.Name))
-                {
-                    throw new SnapshotExtractionException("The family category is unavailable from Document.OwnerFamily.");
-                }
-
+                var identity = RevitFamilyIdentityResolver.Resolve(document);
                 var manager = document.FamilyManager;
                 var parameters = ExtractParameters(manager);
                 var types = ExtractTypes(document, manager, parameters);
@@ -47,8 +36,8 @@ namespace RevitGit.Revit2021.Snapshots
                 }
 
                 return new FamilySnapshot(
-                    ownerFamily.Name,
-                    category.Name,
+                    identity.FamilyName,
+                    identity.CategoryName,
                     parameterSnapshots,
                     types,
                     _geometryFingerprintBuilder.Build(document));

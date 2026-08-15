@@ -37,9 +37,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CanonicalGeometryFingerprintTests.cs" />
+    <Compile Include="RevitFamilyIdentityResolverTests.cs" />
     <Compile Include="RevitParameterDataTypeMapperTests.cs" />
     <Compile Include="RevitParameterValuePolicyTests.cs" />
     <Compile Include="RevitUnitNormalizerTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="files\M_Trim-Window-Interior-Flat.rfa" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
