@@ -17,7 +17,7 @@
             <Expander Margin="0,4" IsExpanded="True" Header="Семейство">
                 <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasFamilyChanges}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Expander.Style>
                 <ItemsControl ItemsSource="{Binding FamilyChanges}"><ItemsControl.ItemTemplate><DataTemplate>
-                    <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                    <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock><Run Text="{Binding Before, Mode=OneWay}"/><Run Text=" → "/><Run Text="{Binding After, Mode=OneWay}"/></TextBlock></StackPanel>
                 </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             </Expander>
             <Expander Margin="0,4" IsExpanded="True" Header="Параметры">
@@ -26,7 +26,7 @@
                     <Border Margin="4" Padding="8" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}">
                         <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" FontWeight="SemiBold" Text="{Binding ChangeLabel}"/><TextBlock FontWeight="SemiBold" Text="{Binding Name}"/></DockPanel>
                             <ItemsControl ItemsSource="{Binding Fields}"><ItemsControl.ItemTemplate><DataTemplate>
-                                <StackPanel Margin="8,5,0,0"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                                <StackPanel Margin="8,5,0,0"><TextBlock FontWeight="SemiBold" Text="{Binding Label}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Before, Mode=OneWay}"/><Run Text=" → "/><Run Text="{Binding After, Mode=OneWay}"/></TextBlock></StackPanel>
                             </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                         </StackPanel>
                     </Border>
@@ -37,7 +37,7 @@
                 <ItemsControl ItemsSource="{Binding TypeChanges}"><ItemsControl.ItemTemplate><DataTemplate>
                     <Expander Margin="4" Padding="6" IsExpanded="True"><Expander.Header><DockPanel><TextBlock Margin="0,0,12,0" FontWeight="SemiBold" Text="{Binding Name}"/><TextBlock Text="{Binding ChangeLabel}"/></DockPanel></Expander.Header>
                         <ItemsControl ItemsSource="{Binding Values}"><ItemsControl.ItemTemplate><DataTemplate>
-                            <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Name}"/><TextBlock><Run Text="{Binding Before}"/><Run Text=" → "/><Run Text="{Binding After}"/></TextBlock></StackPanel>
+                            <StackPanel Margin="8,5"><TextBlock FontWeight="SemiBold" Text="{Binding Name}"/><TextBlock><Run Text="{Binding Before, Mode=OneWay}"/><Run Text=" → "/><Run Text="{Binding After, Mode=OneWay}"/></TextBlock></StackPanel>
                         </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                     </Expander>
                 </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
