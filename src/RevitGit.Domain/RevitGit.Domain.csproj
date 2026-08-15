@@ -28,6 +28,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyMarker.cs" />
+    <Compile Include="Exceptions\DomainException.cs" />
+    <Compile Include="Exceptions\UnknownVariantException.cs" />
+    <Compile Include="Exceptions\UnknownVersionException.cs" />
+    <Compile Include="History\FamilyHistory.cs" />
+    <Compile Include="History\Variant.cs" />
+    <Compile Include="History\Version.cs" />
+    <Compile Include="Identifiers\VariantId.cs" />
+    <Compile Include="Identifiers\VersionId.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
