@@ -90,6 +90,7 @@
     <Compile Include="RevitGitApplication.cs" />
     <Compile Include="Snapshots\CanonicalGeometryFingerprint.cs" />
     <Compile Include="Snapshots\RevitFamilyIdentityResolver.cs" />
+    <Compile Include="Snapshots\RevitFamilyTypeNameResolver.cs" />
     <Compile Include="Snapshots\RevitFamilySnapshotExtractor.cs" />
     <Compile Include="Snapshots\RevitFamilySnapshotProvider.cs" />
     <Compile Include="Snapshots\RevitGeometryFingerprintBuilder.cs" />

@@ -39,6 +39,7 @@
   <ItemGroup>
     <Compile Include="CanonicalGeometryFingerprintTests.cs" />
     <Compile Include="RevitFamilyIdentityResolverTests.cs" />
+    <Compile Include="RevitFamilyTypeNameResolverTests.cs" />
     <Compile Include="RevitParameterDataTypeMapperTests.cs" />
     <Compile Include="RevitParameterValuePolicyTests.cs" />
     <Compile Include="SaveVersionCommandWorkflowTests.cs" />

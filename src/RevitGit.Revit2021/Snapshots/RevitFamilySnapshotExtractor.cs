@@ -28,7 +28,7 @@ namespace RevitGit.Revit2021.Snapshots
                 var identity = RevitFamilyIdentityResolver.Resolve(document);
                 var manager = document.FamilyManager;
                 var parameters = ExtractParameters(manager);
-                var types = ExtractTypes(document, manager, parameters);
+                var types = ExtractTypes(document, manager, parameters, identity.FamilyName);
                 var parameterSnapshots = new List<FamilyParameterSnapshot>();
                 foreach (var parameter in parameters)
                 {
@@ -49,7 +49,7 @@ namespace RevitGit.Revit2021.Snapshots
             catch (Exception exception)
             {
                 throw new SnapshotExtractionException(
-                    "Revit could not extract a deterministic family snapshot.",
+                    "Revit could not extract a deterministic family snapshot: " + exception.Message,
                     exception);
             }
         }
@@ -76,7 +76,8 @@ namespace RevitGit.Revit2021.Snapshots
         private static IList<FamilyTypeSnapshot> ExtractTypes(
             Document document,
             FamilyManager manager,
-            IEnumerable<ParameterEntry> parameters)
+            IEnumerable<ParameterEntry> parameters,
+            string familyName)
         {
             var result = new List<FamilyTypeSnapshot>();
             foreach (FamilyType familyType in manager.Types)
@@ -96,7 +97,8 @@ namespace RevitGit.Revit2021.Snapshots
                     }
                 }
 
-                result.Add(new FamilyTypeSnapshot(familyType.Name, values));
+                var typeName = RevitFamilyTypeNameResolver.Resolve(familyType.Name, familyName);
+                result.Add(new FamilyTypeSnapshot(typeName, values));
             }
 
             return result;
