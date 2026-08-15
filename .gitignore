@@ -1,0 +1,100 @@
+# Visual Studio / build output
+.vs/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+TestResults/
+
+# User-specific Visual Studio files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code local state
+.vscode/
+
+# Test / coverage output
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+*.trx
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+~$*
+logs/
+temp/
+tmp/
+
+# Local harness output
+.harness/
+harness-output/
+
+# Local Family History repositories/state used during development
+.familyhistory/
+*.familyhistory-local/
+
+# Revit local add-in/install artifacts
+*.addin.local
+install-local/
+revit-local/
+
+# Autodesk/Revit binaries must not be committed
+RevitAPI.dll
+RevitAPIUI.dll
+AdWindows.dll
+UIFramework.dll
+Autodesk.Revit*.dll
+
+# Revit generated backup files / journals
+*.0001.rfa
+*.0002.rfa
+*.0003.rfa
+*.0004.rfa
+*.0005.rfa
+*.0001.rvt
+*.0002.rvt
+*.0003.rvt
+*.0004.rvt
+*.0005.rvt
+journal.*.txt
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Packaging output
+packaging/output/
+installer-output/
+*.msi
+*.msix
+
+# Secrets / machine-specific configuration
+.env
+.env.*
+!.env.example
+local.settings.json
+Directory.Build.props.user
