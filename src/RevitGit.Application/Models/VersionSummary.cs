@@ -12,7 +12,8 @@ namespace RevitGit.Application.Models
             string comment,
             VersionId restoredFromVersionId,
             bool isCurrent,
-            DateTimeOffset? restoredFromCreatedAt = null)
+            DateTimeOffset? restoredFromCreatedAt = null,
+            string restoredFromComment = null)
         {
             Id = id;
             ParentVersionId = parentVersionId;
@@ -21,6 +22,7 @@ namespace RevitGit.Application.Models
             RestoredFromVersionId = restoredFromVersionId;
             IsCurrent = isCurrent;
             RestoredFromCreatedAt = restoredFromCreatedAt;
+            RestoredFromComment = restoredFromComment;
         }
 
         public VersionId Id { get; }
@@ -30,5 +32,6 @@ namespace RevitGit.Application.Models
         public VersionId RestoredFromVersionId { get; }
         public bool IsCurrent { get; }
         public DateTimeOffset? RestoredFromCreatedAt { get; }
+        public string RestoredFromComment { get; }
     }
 }

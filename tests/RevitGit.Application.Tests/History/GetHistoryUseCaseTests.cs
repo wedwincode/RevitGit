@@ -40,6 +40,7 @@ namespace RevitGit.Application.Tests.History
             var restoredView = summary.Versions.Single(item => item.Id.Equals(restored.Id));
             Assert.Equal(first, restoredView.RestoredFromVersionId);
             Assert.Equal(InitialTime, restoredView.RestoredFromCreatedAt);
+            Assert.Equal("Initial", restoredView.RestoredFromComment);
             Assert.Equal("Restored", restoredView.Comment);
             Assert.Equal(InitialTime.AddMinutes(2), restoredView.CreatedAt);
             Assert.True(restoredView.IsCurrent);

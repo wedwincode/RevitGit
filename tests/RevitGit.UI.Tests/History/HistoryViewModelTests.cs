@@ -13,7 +13,8 @@ namespace RevitGit.UI.Tests.History
 {
     public sealed class HistoryViewModelTests
     {
-        private static readonly DateTimeOffset FirstTime = new DateTimeOffset(2026, 8, 14, 10, 15, 0, TimeSpan.FromHours(3));
+        private static readonly DateTimeOffset FirstTime =
+            new DateTimeOffset(2026, 8, 14, 10, 15, 0, TimeSpan.FromHours(3));
 
         [Fact]
         public void InitialRefreshUsesLoadingStateAndRequestsRevitContext()
@@ -78,19 +79,107 @@ namespace RevitGit.UI.Tests.History
             viewModel.ShowHistory("Door.rfa", "Основной", new[] { Summary(FirstTime, null, true) });
 
             Assert.Null(viewModel.Versions.Single().Comment);
+            Assert.False(viewModel.Versions.Single().HasComment);
+            Assert.False(viewModel.Versions.Single().HasRestoreProvenance);
+        }
+
+        [Fact]
+        public void OrdinaryVersionWithCommentShowsOnlyCommentPresentation()
+        {
+            var item = Item(FirstTime, "Изменена ширина");
+
+            Assert.True(item.HasComment);
+            Assert.False(item.HasRestoreProvenance);
+            Assert.Equal("Изменена ширина", item.Comment);
+            Assert.Null(item.RestoredFromText);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void MissingCommentHasNoCommentPresentation(string comment)
+        {
+            var item = Item(FirstTime, comment);
+
+            Assert.False(item.HasComment);
+            Assert.False(item.HasRestoreProvenance);
         }
 
         [Fact]
         public void RestoredVersionShowsStructuredSourceDate()
         {
             var restoredFrom = VersionId.New();
-            var restored = Summary(FirstTime.AddHours(2), null, true, restoredFrom: restoredFrom, restoredFromCreatedAt: FirstTime);
+            var restored = Summary(FirstTime.AddHours(2), null, true, restoredFrom: restoredFrom,
+                restoredFromCreatedAt: FirstTime, restoredFromComment: "Начальная версия");
             var viewModel = CreateViewModel();
 
             viewModel.ShowHistory("Door.rfa", "Основной", new[] { restored });
 
             Assert.True(viewModel.SelectedVersion.IsRestored);
-            Assert.Equal("Восстановленная версия\nИсточник: 14.08.2026 10:15", viewModel.SelectedVersion.RestoredFromText);
+            Assert.True(viewModel.SelectedVersion.HasRestoreProvenance);
+            Assert.False(viewModel.SelectedVersion.HasComment);
+            Assert.Equal("Восстановленная версия\nИсточник: Начальная версия — 14.08.2026 10:15",
+                viewModel.SelectedVersion.RestoredFromText);
+        }
+
+        [Fact]
+        public void RestoredVersionWithoutSourceCommentFallsBackToSourceDate()
+        {
+            var item = new HistoryVersionItemViewModel(
+                Summary(FirstTime.AddHours(2), null, restoredFrom: VersionId.New(),
+                    restoredFromCreatedAt: FirstTime));
+
+            Assert.Equal("Восстановленная версия\nИсточник: 14.08.2026 10:15", item.RestoredFromText);
+        }
+
+        [Fact]
+        public void CompareSelectorUsesCommentAsPrimaryAndTimestampAsSecondaryLabel()
+        {
+            var item = Item(new DateTimeOffset(2026, 8, 15, 18, 42, 0, TimeSpan.FromHours(3)), "Изменена ширина");
+
+            Assert.Equal("Изменена ширина", item.PrimaryLabel);
+            Assert.Equal("15.08.2026 18:42", item.SecondaryLabel);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void CompareSelectorUsesTimestampFallbackWhenCommentIsMissing(string comment)
+        {
+            var item = Item(new DateTimeOffset(2026, 8, 15, 18, 42, 0, TimeSpan.FromHours(3)), comment);
+
+            Assert.Equal("15.08.2026 18:42", item.PrimaryLabel);
+            Assert.Null(item.SecondaryLabel);
+        }
+
+        [Fact]
+        public void CompareSelectorDistinguishesSameMinuteVersionsByComment()
+        {
+            var first = Item(FirstTime, "Изменена ширина");
+            var second = Item(FirstTime, "Добавлен тип");
+
+            Assert.NotEqual(first.PrimaryLabel, second.PrimaryLabel);
+        }
+
+        [Fact]
+        public void DuplicateCompareLabelsDoNotReplaceVersionIdentity()
+        {
+            var first = Item(FirstTime, "Исправления");
+            var second = Item(FirstTime, "Исправления");
+
+            Assert.Equal(first.PrimaryLabel, second.PrimaryLabel);
+            Assert.Equal(first.SecondaryLabel, second.SecondaryLabel);
+            Assert.NotEqual(first.Id, second.Id);
+        }
+
+        [Fact]
+        public void LongCommentIsPreservedAsComparePrimaryLabel()
+        {
+            var comment = new string('А', 500);
+
+            Assert.Equal(comment, Item(FirstTime, comment).PrimaryLabel);
         }
 
         [Fact]
@@ -173,7 +262,8 @@ namespace RevitGit.UI.Tests.History
             Assert.False(viewModel.CompareWithCurrentCommand.CanExecute(null));
             Assert.Equal(source.Id, request.CurrentSource);
 
-            var snapshot = new FamilySnapshot("Door", "Doors", new FamilyParameterSnapshot[0], new FamilyTypeSnapshot[0], "a");
+            var snapshot = new FamilySnapshot("Door", "Doors", new FamilyParameterSnapshot[0],
+                new FamilyTypeSnapshot[0], "a");
             viewModel.ShowComparison(new CompareViewModel(new FamilyDiffEngine().Compare(snapshot, snapshot),
                 new ComparisonSideViewModel("A", null), new ComparisonSideViewModel("Текущее состояние", null)));
             Assert.True(viewModel.IsComparePage);
@@ -258,21 +348,32 @@ namespace RevitGit.UI.Tests.History
 
         private static HistoryViewModel CreateViewModel() => new HistoryViewModel(new RefreshRequest());
 
+        private static HistoryVersionItemViewModel Item(DateTimeOffset createdAt, string comment)
+        {
+            return new HistoryVersionItemViewModel(Summary(createdAt, comment));
+        }
+
         private static VersionSummary Summary(
             DateTimeOffset createdAt,
             string comment,
             bool current = false,
             VersionId parent = null,
             VersionId restoredFrom = null,
-            DateTimeOffset? restoredFromCreatedAt = null)
+            DateTimeOffset? restoredFromCreatedAt = null,
+            string restoredFromComment = null)
         {
-            return new VersionSummary(VersionId.New(), parent, createdAt, comment, restoredFrom, current, restoredFromCreatedAt);
+            return new VersionSummary(VersionId.New(), parent, createdAt, comment, restoredFrom, current,
+                restoredFromCreatedAt, restoredFromComment);
         }
 
         private sealed class RefreshRequest : IHistoryRefreshRequest
         {
             public int Count { get; private set; }
-            public void RequestRefresh() { Count++; }
+
+            public void RequestRefresh()
+            {
+                Count++;
+            }
         }
 
         private sealed class CompareRequest : IHistoryCompareRequest
@@ -280,15 +381,27 @@ namespace RevitGit.UI.Tests.History
             public VersionId CurrentSource { get; private set; }
             public VersionId SavedSource { get; private set; }
             public VersionId SavedTarget { get; private set; }
-            public void RequestCompareWithCurrent(VersionId sourceVersionId) { CurrentSource = sourceVersionId; }
+
+            public void RequestCompareWithCurrent(VersionId sourceVersionId)
+            {
+                CurrentSource = sourceVersionId;
+            }
+
             public void RequestCompareSaved(VersionId sourceVersionId, VersionId targetVersionId)
-            { SavedSource = sourceVersionId; SavedTarget = targetVersionId; }
+            {
+                SavedSource = sourceVersionId;
+                SavedTarget = targetVersionId;
+            }
         }
 
         private sealed class RestoreRequest : IHistoryRestoreRequest
         {
             public VersionId Source { get; private set; }
-            public void RequestRestore(VersionId sourceVersionId) { Source = sourceVersionId; }
+
+            public void RequestRestore(VersionId sourceVersionId)
+            {
+                Source = sourceVersionId;
+            }
         }
     }
 }

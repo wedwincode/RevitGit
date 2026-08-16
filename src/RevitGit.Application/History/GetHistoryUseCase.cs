@@ -38,16 +38,21 @@ namespace RevitGit.Application.History
                 .ToList();
 
             var versions = GetCurrentVariantAncestry(history, currentVersionId)
-                .Select(version => new VersionSummary(
-                    version.Id,
-                    version.ParentVersionId,
-                    version.CreatedAt,
-                    version.Comment,
-                    version.RestoredFromVersionId,
-                    version.Id.Equals(currentVersionId),
-                    version.RestoredFromVersionId == null
-                        ? (DateTimeOffset?)null
-                        : history.GetVersion(version.RestoredFromVersionId).CreatedAt))
+                .Select(version =>
+                {
+                    var restoredFrom = version.RestoredFromVersionId == null
+                        ? null
+                        : history.GetVersion(version.RestoredFromVersionId);
+                    return new VersionSummary(
+                        version.Id,
+                        version.ParentVersionId,
+                        version.CreatedAt,
+                        version.Comment,
+                        version.RestoredFromVersionId,
+                        version.Id.Equals(currentVersionId),
+                        restoredFrom?.CreatedAt,
+                        restoredFrom?.Comment);
+                })
                 .ToList();
 
             return new HistorySummary(
